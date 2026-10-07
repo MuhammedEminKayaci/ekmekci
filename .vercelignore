@@ -1,0 +1,8 @@
+.env*
+!.env.example
+.playwright-mcp
+supabase/.temp
+supabase/.branches
+.next
+node_modules
+*.tsbuildinfo

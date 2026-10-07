@@ -2,7 +2,7 @@
 
 Ekmek dağıtımı, iade ve tahsilat takibi. Müşteri başına fiyat, günlük kayıt, haftalık rapor ve hesap dökümü.
 
-**Sürüm:** 1.0 · **Geliştirici:** [www.kayacimedia.com](https://www.kayacimedia.com) · **Destek:** 0552 218 34 18
+**Canlı adres:** https://ekmekci-five.vercel.app · **Sürüm:** 1.0 · **Geliştirici:** [www.kayacimedia.com](https://www.kayacimedia.com) · **Destek:** 0552 218 34 18
 
 ## Teknoloji
 
@@ -12,14 +12,16 @@ Ekmek dağıtımı, iade ve tahsilat takibi. Müşteri başına fiyat, günlük 
 
 ## Vercel'e yayın
 
+Proje Vercel'de kurulu ve GitHub'a bağlı: `main` dalına yapılan her push otomatik yayınlanır.
+Sıfırdan kurulum gerekirse:
+
 1. Vercel'de **Add New → Project** ile bu GitHub deposunu içe aktarın. Framework otomatik "Next.js" seçilir.
-2. **Environment Variables** bölümüne üç değişkeni girin:
+2. **Environment Variables** bölümüne iki değişkeni girin (secret key gerekmez, uygulama kullanmaz):
 
    | Değişken | Değer |
    |---|---|
    | `NEXT_PUBLIC_SUPABASE_URL` | `https://huteelmisrwjvcjsquit.supabase.co` |
    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → API Keys → Publishable key |
-   | `SUPABASE_SECRET_KEY` | Supabase → API Keys → Secret key (sadece sunucuda kullanılır) |
 
 3. **Deploy**'a basın.
 4. Yayın adresini Supabase → Authentication → URL Configuration → **Site URL** alanına yazın.
