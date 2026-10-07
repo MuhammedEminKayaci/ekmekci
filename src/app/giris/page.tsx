@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Brand } from "@/components/brand";
+import { Credit } from "@/components/credit";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Giriş" };
@@ -17,6 +18,7 @@ export default function LoginPage() {
           <LoginForm />
         </div>
       </div>
+      <Credit />
     </main>
   );
 }

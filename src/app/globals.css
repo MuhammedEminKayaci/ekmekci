@@ -7,9 +7,11 @@
 ----------------------------------------------------------------------------- */
 
 :root {
-  --bg: #f2f7f3;
-  --bg-deep: #e6efe8;
-  --surface: #f7fbf8;
+  --bg: #e9f0eb;
+  --bg-deep: #dfe8e2;
+  --surface: #fbfdfc;
+  --edge: rgba(16, 60, 34, 0.09);
+  --edge-strong: rgba(16, 60, 34, 0.14);
   --ink: #10241a;
   --ink-2: #48604f;
   --ink-3: #6f8476;
@@ -36,8 +38,8 @@
   --credit: #0a7a42;
   --credit-soft: rgba(10, 122, 66, 0.11);
 
-  --sh-light: rgba(255, 255, 255, 1);
-  --sh-dark: rgba(116, 150, 128, 0.32);
+  --sh-light: rgba(255, 255, 255, 0.95);
+  --sh-dark: rgba(96, 132, 108, 0.3);
 
   --focus: #0f9150;
 
@@ -52,9 +54,11 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111a15;
-    --bg-deep: #0d1511;
-    --surface: #141f19;
+    --bg: #0e1612;
+    --bg-deep: #0a110d;
+    --surface: #15211b;
+    --edge: rgba(229, 239, 232, 0.07);
+    --edge-strong: rgba(229, 239, 232, 0.12);
     --ink: #e5efe8;
     --ink-2: #a6b8ad;
     --ink-3: #7d9285;
@@ -101,6 +105,8 @@
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
   --color-line: var(--line);
+  --color-edge: var(--edge);
+  --color-edge-strong: var(--edge-strong);
   --color-brand: var(--brand);
   --color-brand-deep: var(--brand-deep);
   --color-brand-ink: var(--brand-ink);
@@ -134,20 +140,25 @@
 @utility neu {
   background: var(--surface);
   box-shadow:
-    10px 10px 24px var(--sh-dark),
-    -10px -10px 24px var(--sh-light);
+    0 0 0 1px var(--edge),
+    0 1px 2px rgba(16, 60, 34, 0.06),
+    10px 12px 28px -6px var(--sh-dark),
+    -8px -8px 22px var(--sh-light);
 }
 
 @utility neu-sm {
   background: var(--surface);
   box-shadow:
-    5px 5px 12px var(--sh-dark),
-    -5px -5px 12px var(--sh-light);
+    0 0 0 1px var(--edge),
+    0 1px 2px rgba(16, 60, 34, 0.05),
+    5px 6px 14px -3px var(--sh-dark),
+    -4px -4px 12px var(--sh-light);
 }
 
 @utility neu-inset {
   background: var(--bg);
   box-shadow:
+    inset 0 0 0 1px var(--edge),
     inset 3px 3px 7px var(--sh-dark),
     inset -3px -3px 7px var(--sh-light);
 }
@@ -234,6 +245,18 @@
   }
 }
 
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes gauge {
+  from {
+    stroke-dashoffset: 100;
+  }
+}
+
 @keyframes pulse-soft {
   50% {
     opacity: 0.5;
@@ -257,6 +280,15 @@
   transform-origin: bottom;
   animation: grow-y 700ms var(--ease-out) both;
   animation-delay: calc(var(--i, 0) * 45ms + 150ms);
+}
+
+@utility animate-draw {
+  stroke-dasharray: 1;
+  animation: draw 1300ms var(--ease-out) 200ms both;
+}
+
+@utility animate-gauge {
+  animation: gauge 1200ms var(--ease-out) 250ms both;
 }
 
 @utility animate-toast {

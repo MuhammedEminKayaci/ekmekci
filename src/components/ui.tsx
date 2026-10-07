@@ -223,7 +223,7 @@ export function ButtonLink({
 }
 
 export const inputClass =
-  "neu-inset tnum w-full min-h-12 rounded-control px-4 text-[1rem] text-ink placeholder:text-ink-3 outline-none transition-shadow duration-200 focus:shadow-[inset_3px_3px_7px_var(--sh-dark),inset_-3px_-3px_7px_var(--sh-light),0_0_0_2px_var(--brand)] disabled:opacity-60";
+  "neu-inset tnum w-full min-h-12 rounded-control px-4 text-[1rem] text-ink placeholder:text-ink-3 outline-none transition-shadow duration-200 focus:shadow-[inset_0_0_0_2px_var(--brand),inset_3px_3px_7px_var(--sh-dark)] disabled:opacity-60";
 
 export function Field({
   label,
@@ -296,7 +296,7 @@ export function WeekNav({
         <ChevronRight size={22} strokeWidth={2.4} className="shrink-0" />
       </Link>
       {!isCurrent && (
-        <Link href={currentHref} className={buttonClass("primary", "w-full sm:w-auto")} scroll={false}>
+        <Link href={currentHref} className={buttonClass("primary", "w-full whitespace-nowrap sm:w-auto")} scroll={false}>
           <CalendarCheck size={17} /> Bu haftaya dön
         </Link>
       )}

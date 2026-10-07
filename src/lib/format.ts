@@ -12,6 +12,19 @@ export function money(value: number | null | undefined): string {
   return `${(Number.isInteger(v) ? moneyWhole : moneyCents).format(v)} ₺`;
 }
 
+const compactFmt = new Intl.NumberFormat("tr-TR", { notation: "compact", maximumFractionDigits: 1 });
+
+/** Eksen etiketleri için kısa tutar: "15,4 B ₺". */
+export function moneyShort(value: number): string {
+  return `${compactFmt.format(value)} ₺`;
+}
+
+/** Yüzde değişim; önceki değer 0 ise null. */
+export function pctChange(current: number, previous: number): number | null {
+  if (!previous) return null;
+  return ((current - previous) / Math.abs(previous)) * 100;
+}
+
 export function qty(value: number | null | undefined): string {
   return qtyFmt.format(Number(value ?? 0));
 }

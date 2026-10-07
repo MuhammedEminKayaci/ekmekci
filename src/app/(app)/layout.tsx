@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { LogOut } from "lucide-react";
 import { Brand } from "@/components/brand";
+import { Credit } from "@/components/credit";
 import { Skeleton, cx } from "@/components/ui";
 import { signOut } from "@/lib/actions";
 import { createClient } from "@/lib/supabase/server";
@@ -71,12 +72,13 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             <UserCard />
           </Suspense>
         </header>
-        <main className="flex-1 px-4 pt-4 pb-36 sm:px-6 lg:px-8 lg:pt-9 lg:pb-12 xl:px-10 3xl:px-14">{children}</main>
+        <main className="flex-1 px-4 pt-4 pb-44 sm:px-6 lg:px-8 lg:pt-9 lg:pb-20 xl:px-10 3xl:px-14">{children}</main>
       </div>
 
       <Suspense fallback={<TabBarFallback />}>
         <TabBar />
       </Suspense>
+      <Credit withTabBar />
     </div>
   );
 }
