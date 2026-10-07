@@ -2,17 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, FileText, IdCard, Tag, Wallet } from "lucide-react";
 import {
   Balance,
   BalanceBadge,
   Empty,
+  IconChip,
   Segmented,
   Skeleton,
   Stat,
   Tile,
   TileTitle,
   TypeChip,
+  order,
 } from "@/components/ui";
 import {
   addDays,
@@ -80,11 +82,11 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
 
   return (
     <>
-      <Link href="/musteriler" className="mb-4 inline-flex items-center gap-1 text-[0.88rem] font-semibold text-ink-2 hover:text-ink">
+      <Link href="/musteriler" className="animate-rise mb-4 inline-flex min-h-10 items-center gap-1 rounded-xl pr-3 text-[0.9rem] font-semibold text-ink-2 transition-colors hover:text-brand-deep">
         <ChevronLeft size={17} /> Müşteriler
       </Link>
 
-      <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+      <header className="animate-rise mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <TypeChip type={customer.type ?? 1} />
@@ -109,9 +111,11 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
       </header>
 
       <div className="grid gap-4 sm:gap-5 md:grid-cols-6">
-        <Tile className="md:col-span-3 lg:col-span-2">
-          <p className="text-[0.8rem] font-medium text-ink-2">Güncel bakiye</p>
-          <p className="mt-2">
+        <Tile i={1} className="md:col-span-3 lg:col-span-2">
+          <TileTitle icon={<IconChip icon={Wallet} tone={Number(customer.balance ?? 0) > 0 ? "debt" : "brand"} size="sm" />}>
+            Güncel hesap
+          </TileTitle>
+          <p>
             <Balance value={Number(customer.balance ?? 0)} className="font-display text-[2.4rem] leading-none tracking-[-0.02em] sm:text-[2.8rem]" />
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -122,8 +126,10 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
           </div>
         </Tile>
 
-        <Tile className="md:col-span-3 lg:col-span-2">
-          <TileTitle aside={<PriceAction customerId={id} today={today} />}>Ekmek fiyatı</TileTitle>
+        <Tile i={2} className="md:col-span-3 lg:col-span-2">
+          <TileTitle icon={<IconChip icon={Tag} tone="amber" size="sm" />} aside={<PriceAction customerId={id} today={today} />}>
+            Ekmek fiyatı
+          </TileTitle>
           <Stat
             label="Şu an"
             value={money(customer.current_price)}
@@ -141,8 +147,8 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
           )}
         </Tile>
 
-        <Tile className="md:col-span-6 lg:col-span-2">
-          <TileTitle>Kart bilgileri</TileTitle>
+        <Tile i={3} className="md:col-span-6 lg:col-span-2">
+          <TileTitle icon={<IconChip icon={IdCard} tone="sky" size="sm" />}>Kart bilgileri</TileTitle>
           <dl className="flex flex-col gap-3 text-[0.9rem]">
             <div>
               <dt className="text-[0.78rem] font-semibold text-ink-3">Adres</dt>
@@ -161,10 +167,12 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
           </dl>
         </Tile>
 
-        <section className="neu rounded-tile md:col-span-6">
+        <section style={order(4)} className="neu animate-rise rounded-tile md:col-span-6">
           <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div>
-              <h2 className="font-display text-[1.15rem] font-semibold tracking-tight">Hesap ekstresi</h2>
+              <h2 className="flex items-center gap-2.5 font-display text-[1.15rem] font-semibold tracking-tight">
+                <IconChip icon={FileText} tone="brand" size="sm" /> Hesap dökümü
+              </h2>
               <p className="text-[0.85rem] text-ink-3">
                 {shortDate(from)} – {shortDate(to)} · en yeni üstte
               </p>
@@ -184,15 +192,15 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
                 <span className="text-right">Verilen</span>
                 <span className="text-right">İade</span>
                 <span className="text-right">Tutar</span>
-                <span className="text-right">Tahsilat</span>
+                <span className="text-right">Alınan para</span>
                 <span className="text-right">Fark</span>
-                <span className="text-right">Bakiye</span>
+                <span className="text-right">Hesap</span>
               </div>
               <ul className="flex flex-col gap-2.5 px-3 pb-3 sm:px-4 lg:gap-0 lg:px-0 lg:pb-2">
                 {rows.map((r) => (
                   <li
                     key={r.period_start}
-                    className="neu-sm rounded-2xl p-4 lg:grid lg:grid-cols-[minmax(10rem,1.6fr)_repeat(6,minmax(5.5rem,1fr))] lg:items-center lg:gap-4 lg:rounded-none lg:border-b lg:border-line lg:bg-transparent lg:px-6 lg:py-3 lg:shadow-none"
+                    className="neu-sm rounded-2xl p-4 lg:grid lg:grid-cols-[minmax(10rem,1.6fr)_repeat(6,minmax(5.5rem,1fr))] lg:items-center lg:gap-4 lg:rounded-none lg:border-b lg:border-line lg:bg-transparent lg:px-6 lg:py-3 lg:shadow-none lg:transition-colors lg:hover:bg-brand-soft/40"
                   >
                     <div className="mb-3 flex items-baseline justify-between gap-3 lg:mb-0 lg:block">
                       <p className="font-semibold">{periodLabel(group, r.period_start)}</p>
@@ -204,7 +212,7 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
                       <Cell label="Verilen" value={qty(r.delivered_qty)} />
                       <Cell label="İade" value={qty(r.returned_qty)} />
                       <Cell label="Tutar" value={money(r.net_amount)} />
-                      <Cell label="Tahsilat" value={money(r.collection)} />
+                      <Cell label="Alınan" value={money(r.collection)} />
                       <Cell label="Fark" value={<Balance value={r.period_delta} className="font-medium" />} />
                       <div className="hidden text-right lg:block">
                         <Balance value={r.running_balance} />

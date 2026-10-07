@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Pencil, Power } from "lucide-react";
 import { Sheet } from "@/components/sheet";
+import { toast } from "@/components/toast";
 import { Button, Field, buttonClass, inputClass } from "@/components/ui";
 import { setCustomerActive, setCustomerPrice } from "@/lib/actions";
 import { CustomerForm, type CustomerFormValues } from "../customer-form";
@@ -16,6 +17,7 @@ export function CustomerActions({ customer }: { customer: CustomerFormValues & {
     start(async () => {
       const res = await setCustomerActive(customer.id!, !customer.is_active);
       setError(res.ok ? null : res.error);
+      if (res.ok) toast(customer.is_active ? "Müşteri pasife alındı." : "Müşteri tekrar aktif.");
     });
   }
 
@@ -49,19 +51,24 @@ export function PriceAction({ customerId, today }: { customerId: number; today: 
       if (res.ok) {
         setError(null);
         setOpen(false);
+        toast("Yeni fiyat kaydedildi.");
       } else setError(res.error);
     });
   }
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="text-[0.85rem] font-semibold text-ink-2 hover:text-ink">
-        Değiştir
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-lg px-2.5 py-1.5 text-[0.85rem] font-semibold text-brand-deep hover:bg-brand-soft dark:text-brand"
+      >
+        Fiyatı değiştir
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title="Fiyatı değiştir">
         <form action={submit} className="flex flex-col gap-4">
           <Field label="Yeni fiyat (₺)">
-            <input name="price" required inputMode="decimal" autoComplete="off" className={inputClass} />
+            <input name="price" required inputMode="decimal" autoComplete="off" placeholder="Örn. 42,50" className={inputClass} />
           </Field>
           <Field
             label="Geçerli olacağı tarih"
@@ -74,7 +81,7 @@ export function PriceAction({ customerId, today }: { customerId: number; today: 
               {error}
             </p>
           )}
-          <button type="submit" disabled={pending} className={buttonClass("primary", "w-full")}>
+          <button type="submit" disabled={pending} className={buttonClass("primary", "min-h-14 w-full text-[1rem]")}>
             {pending ? "Kaydediliyor…" : "Fiyatı kaydet"}
           </button>
         </form>

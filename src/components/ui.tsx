@@ -1,10 +1,16 @@
 import Link from "next/link";
-import type { ComponentProps, ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { balanceLabel, balanceTone, money, weekRangeLabel } from "@/lib/format";
+import type { ComponentProps, CSSProperties, ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight } from "lucide-react";
+import { balanceTone, money, weekRangeLabel } from "@/lib/format";
 
 export function cx(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
+}
+
+/** Sıralı giriş animasyonu için gecikme sırası. */
+export function order(i: number): CSSProperties {
+  return { ["--i" as string]: i };
 }
 
 // --- Yüzeyler ----------------------------------------------------------------
@@ -12,19 +18,27 @@ export function cx(...parts: Array<string | false | null | undefined>) {
 export function Tile({
   className,
   children,
+  i,
   ...rest
-}: ComponentProps<"section"> & { children: ReactNode }) {
+}: ComponentProps<"section"> & { children: ReactNode; i?: number }) {
   return (
-    <section className={cx("neu rounded-tile p-5 sm:p-6", className)} {...rest}>
+    <section
+      className={cx("neu animate-rise rounded-tile p-5 sm:p-6", className)}
+      style={i != null ? order(i) : undefined}
+      {...rest}
+    >
       {children}
     </section>
   );
 }
 
-export function TileTitle({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
+export function TileTitle({ children, aside, icon }: { children: ReactNode; aside?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
-      <h2 className="font-display text-[1.05rem] font-semibold tracking-tight text-ink">{children}</h2>
+      <h2 className="flex items-center gap-2.5 font-display text-[1.08rem] font-semibold tracking-tight text-ink">
+        {icon}
+        {children}
+      </h2>
       {aside}
     </div>
   );
@@ -40,15 +54,42 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+    <header className="animate-rise mb-6 flex flex-col gap-4 sm:mb-8 xl:flex-row xl:items-end xl:justify-between">
       <div className="min-w-0">
-        <h1 className="font-display text-[2rem] leading-[1.05] font-semibold tracking-[-0.02em] text-ink sm:text-[2.6rem]">
+        <h1 className="font-display text-[2rem] leading-[1.05] font-semibold tracking-[-0.025em] text-ink sm:text-[2.5rem]">
           {title}
         </h1>
-        {description && <p className="mt-2 max-w-[60ch] text-ink-2">{description}</p>}
+        {description && <p className="mt-2 max-w-[62ch] text-[0.95rem] text-ink-2">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}
     </header>
+  );
+}
+
+// --- Renkli simge rozeti ----------------------------------------------------
+
+export type Tone = "brand" | "amber" | "sky" | "debt" | "neutral";
+
+const toneClass: Record<Tone, string> = {
+  brand: "bg-brand-soft text-brand-deep dark:text-brand",
+  amber: "bg-amber-soft text-amber",
+  sky: "bg-sky-soft text-sky",
+  debt: "bg-debt-soft text-debt",
+  neutral: "bg-bg-deep text-ink-2",
+};
+
+export function IconChip({ icon: Icon, tone = "brand", size = "md" }: { icon: LucideIcon; tone?: Tone; size?: "sm" | "md" }) {
+  return (
+    <span
+      className={cx(
+        "grid shrink-0 place-items-center",
+        size === "sm" ? "size-8 rounded-[0.65rem]" : "size-10 rounded-xl",
+        toneClass[tone],
+      )}
+      aria-hidden
+    >
+      <Icon size={size === "sm" ? 16 : 19} strokeWidth={2.1} />
+    </span>
   );
 }
 
@@ -59,24 +100,31 @@ export function Stat({
   value,
   hint,
   size = "md",
+  icon,
+  tone,
 }: {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
   size?: "md" | "lg";
+  icon?: LucideIcon;
+  tone?: Tone;
 }) {
   return (
-    <div className="min-w-0">
-      <p className="text-[0.8rem] font-medium text-ink-2">{label}</p>
-      <p
-        className={cx(
-          "font-display tnum mt-1 truncate font-semibold tracking-[-0.02em] text-ink",
-          size === "lg" ? "text-[2.1rem] leading-none sm:text-[2.6rem]" : "text-[1.45rem] leading-tight",
-        )}
-      >
-        {value}
-      </p>
-      {hint && <p className="mt-1 text-[0.8rem] text-ink-3">{hint}</p>}
+    <div className="flex min-w-0 items-start gap-3">
+      {icon && <IconChip icon={icon} tone={tone} size={size === "lg" ? "md" : "sm"} />}
+      <div className="min-w-0">
+        <p className="text-[0.82rem] font-semibold text-ink-2">{label}</p>
+        <p
+          className={cx(
+            "font-display tnum mt-0.5 truncate font-semibold tracking-[-0.02em] text-ink",
+            size === "lg" ? "text-[2.2rem] leading-none sm:text-[2.7rem]" : "text-[1.4rem] leading-tight",
+          )}
+        >
+          {value}
+        </p>
+        {hint && <p className="mt-1 text-[0.8rem] text-ink-3">{hint}</p>}
+      </div>
     </div>
   );
 }
@@ -100,25 +148,42 @@ export function Balance({ value, className }: { value: number; className?: strin
   );
 }
 
-export function BalanceBadge({ value }: { value: number }) {
+const BADGE_TEXT = {
+  balance: { debt: "Borçlu", credit: "Alacaklı", zero: "Hesap kapalı" },
+  delta: { debt: "Borç yazıldı", credit: "Fazla ödedi", zero: "Tam ödedi" },
+} as const;
+
+/** Bakiyeyi kelimeyle anlatır: renk tek başına bilgi taşımaz. */
+export function BalanceBadge({ value, kind = "balance" }: { value: number; kind?: keyof typeof BADGE_TEXT }) {
   const tone = balanceTone(value);
   return (
     <span
       className={cx(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.75rem] font-semibold",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[0.74rem] font-semibold whitespace-nowrap",
         tone === "debt" && "bg-debt-soft text-debt",
         tone === "credit" && "bg-credit-soft text-credit",
-        tone === "zero" && "bg-bg-deep text-ink-3",
+        tone === "zero" && "bg-bg-deep text-ink-2",
       )}
     >
-      {balanceLabel(value)}
+      <span
+        className={cx(
+          "size-1.5 rounded-full",
+          tone === "debt" ? "bg-debt" : tone === "credit" ? "bg-credit" : "bg-ink-3",
+        )}
+      />
+      {BADGE_TEXT[kind][tone]}
     </span>
   );
 }
 
 export function TypeChip({ type }: { type: number }) {
   return (
-    <span className="inline-flex items-center rounded-full bg-bg-deep px-2 py-0.5 text-[0.72rem] font-medium text-ink-2">
+    <span
+      className={cx(
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[0.72rem] font-semibold",
+        type === 2 ? "bg-sky-soft text-sky" : "bg-brand-soft text-brand-deep dark:text-brand",
+      )}
+    >
       {type === 2 ? "Kurumsal" : "Şahıs"}
     </span>
   );
@@ -130,12 +195,13 @@ type ButtonVariant = "primary" | "soft" | "ghost" | "danger";
 
 export function buttonClass(variant: ButtonVariant = "soft", className?: string) {
   return cx(
-    "inline-flex min-h-11 items-center justify-center gap-2 rounded-control px-4 text-[0.9rem] font-semibold transition-[box-shadow,transform,opacity] duration-150 select-none",
-    "active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
-    variant === "primary" && "wheat-fill",
-    variant === "soft" && "neu-sm text-ink active:neu-pressed",
-    variant === "ghost" && "text-ink-2 hover:text-ink",
-    variant === "danger" && "neu-sm text-debt active:neu-pressed",
+    "inline-flex min-h-12 items-center justify-center gap-2 rounded-control px-5 text-[0.93rem] font-semibold select-none",
+    "transition-[transform,box-shadow,background-color,color,opacity] duration-200 ease-out active:scale-[0.97]",
+    "disabled:pointer-events-none disabled:opacity-50",
+    variant === "primary" && "brand-fill hover:brightness-[1.06]",
+    variant === "soft" && "neu-sm text-ink hover:text-brand-deep dark:hover:text-brand",
+    variant === "ghost" && "text-ink-2 hover:bg-brand-soft hover:text-ink",
+    variant === "danger" && "neu-sm text-debt",
     className,
   );
 }
@@ -157,7 +223,7 @@ export function ButtonLink({
 }
 
 export const inputClass =
-  "neu-inset tnum w-full min-h-11 rounded-control px-3.5 text-[0.95rem] text-ink placeholder:text-ink-3 outline-none focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-60";
+  "neu-inset tnum w-full min-h-12 rounded-control px-4 text-[1rem] text-ink placeholder:text-ink-3 outline-none transition-shadow duration-200 focus:shadow-[inset_3px_3px_7px_var(--sh-dark),inset_-3px_-3px_7px_var(--sh-light),0_0_0_2px_var(--brand)] disabled:opacity-60";
 
 export function Field({
   label,
@@ -172,9 +238,9 @@ export function Field({
 }) {
   return (
     <label className={cx("flex flex-col gap-1.5", className)}>
-      <span className="text-[0.8rem] font-semibold text-ink-2">{label}</span>
+      <span className="text-[0.85rem] font-semibold text-ink-2">{label}</span>
       {children}
-      {hint && <span className="text-[0.78rem] text-ink-3">{hint}</span>}
+      {hint && <span className="text-[0.8rem] text-ink-3">{hint}</span>}
     </label>
   );
 }
@@ -195,8 +261,8 @@ export function Segmented({
           scroll={false}
           aria-current={it.value === active ? "page" : undefined}
           className={cx(
-            "rounded-full px-3.5 py-1.5 text-[0.82rem] font-semibold transition-shadow",
-            it.value === active ? "neu-sm text-ink" : "text-ink-2 hover:text-ink",
+            "rounded-full px-4 py-2 text-[0.85rem] font-semibold transition-all duration-300",
+            it.value === active ? "brand-fill" : "text-ink-2 hover:text-ink",
           )}
         >
           {it.label}
@@ -218,30 +284,32 @@ export function WeekNav({
   currentHref: string;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <Link href={hrefFor(-1)} className={buttonClass("soft", "w-11 px-0")} aria-label="Önceki hafta" scroll={false}>
-        <ChevronLeft size={18} />
+    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
+      <Link href={hrefFor(-1)} className={buttonClass("soft", "w-12 px-0")} aria-label="Önceki hafta" scroll={false}>
+        <ChevronLeft size={22} strokeWidth={2.4} className="shrink-0" />
       </Link>
-      <div className="neu-inset flex min-h-11 min-w-0 flex-1 items-center justify-center rounded-control px-4 text-center text-[0.9rem] font-semibold whitespace-nowrap text-ink sm:flex-none sm:min-w-56">
-        {weekRangeLabel(start)}
+      <div className="neu-inset flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center rounded-control px-4 text-center sm:min-w-60 sm:flex-none">
+        <span className="text-[0.92rem] font-semibold whitespace-nowrap text-ink">{weekRangeLabel(start)}</span>
+        <span className="text-[0.72rem] font-semibold text-ink-3">{isCurrent ? "Bu hafta" : "Geçmiş / ileri hafta"}</span>
       </div>
-      <Link href={hrefFor(1)} className={buttonClass("soft", "w-11 px-0")} aria-label="Sonraki hafta" scroll={false}>
-        <ChevronRight size={18} />
+      <Link href={hrefFor(1)} className={buttonClass("soft", "w-12 px-0")} aria-label="Sonraki hafta" scroll={false}>
+        <ChevronRight size={22} strokeWidth={2.4} className="shrink-0" />
       </Link>
       {!isCurrent && (
-        <Link href={currentHref} className={buttonClass("ghost", "px-2")} scroll={false}>
-          Bu hafta
+        <Link href={currentHref} className={buttonClass("primary", "w-full sm:w-auto")} scroll={false}>
+          <CalendarCheck size={17} /> Bu haftaya dön
         </Link>
       )}
     </div>
   );
 }
 
-export function Empty({ title, children }: { title: string; children?: ReactNode }) {
+export function Empty({ title, children, icon }: { title: string; children?: ReactNode; icon?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
-      <p className="font-display text-[1.1rem] font-semibold text-ink">{title}</p>
-      {children && <div className="max-w-[44ch] text-ink-2">{children}</div>}
+    <div className="animate-fade flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+      {icon}
+      <p className="font-display text-[1.15rem] font-semibold text-ink">{title}</p>
+      {children && <div className="max-w-[46ch] text-ink-2">{children}</div>}
     </div>
   );
 }

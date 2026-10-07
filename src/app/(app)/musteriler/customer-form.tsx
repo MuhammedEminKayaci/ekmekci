@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
 import { Field, buttonClass, cx, inputClass } from "@/components/ui";
 import { createCustomer, updateCustomer } from "@/lib/actions";
 
@@ -36,6 +37,7 @@ export function CustomerForm({
         return;
       }
       setError(null);
+      toast(editing ? "Müşteri kartı kaydedildi." : "Müşteri oluşturuldu.");
       onDone?.();
       if (!editing && typeof res.data === "number") router.push(`/musteriler/${res.data}`);
     });
@@ -45,7 +47,7 @@ export function CustomerForm({
     <form action={submit} className="flex flex-col gap-4">
       <fieldset className="flex flex-col gap-1.5">
         <legend className="mb-1.5 text-[0.8rem] font-semibold text-ink-2">Müşteri türü</legend>
-        <div className="neu-inset grid grid-cols-2 rounded-full p-1">
+        <div className="neu-inset grid grid-cols-2 rounded-full p-1.5">
           {[
             { v: 1, label: "Şahıs" },
             { v: 2, label: "Kurumsal" },
@@ -56,8 +58,8 @@ export function CustomerForm({
               aria-pressed={type === o.v}
               onClick={() => setType(o.v)}
               className={cx(
-                "min-h-10 rounded-full text-[0.88rem] font-semibold transition-shadow",
-                type === o.v ? "neu-sm text-ink" : "text-ink-2",
+                "min-h-11 rounded-full text-[0.92rem] font-semibold transition-all duration-300",
+                type === o.v ? "brand-fill" : "text-ink-2 hover:text-ink",
               )}
             >
               {o.label}
@@ -67,7 +69,15 @@ export function CustomerForm({
       </fieldset>
 
       <Field label={type === 2 ? "Firma adı" : "Ad soyad"}>
-        <input name="name" required maxLength={120} defaultValue={initial?.name} autoComplete="off" className={inputClass} />
+        <input
+          name="name"
+          required
+          maxLength={120}
+          defaultValue={initial?.name}
+          autoComplete="off"
+          placeholder={type === 2 ? "Örn. Yıldız Kafe" : "Örn. Ahmet Yılmaz"}
+          className={inputClass}
+        />
       </Field>
 
       {!editing && (
@@ -76,7 +86,7 @@ export function CustomerForm({
         </Field>
       )}
 
-      <Field label="Adres">
+      <Field label="Adres (isteğe bağlı)">
         <textarea
           name="address"
           rows={2}
@@ -86,7 +96,7 @@ export function CustomerForm({
         />
       </Field>
 
-      <Field label="Not">
+      <Field label="Not (isteğe bağlı)">
         <textarea
           name="note"
           rows={2}
@@ -102,7 +112,7 @@ export function CustomerForm({
         </p>
       )}
 
-      <button type="submit" disabled={pending} className={buttonClass("primary", "mt-1 w-full")}>
+      <button type="submit" disabled={pending} className={buttonClass("primary", "mt-1 min-h-14 w-full text-[1rem]")}>
         {pending ? "Kaydediliyor…" : editing ? "Değişiklikleri kaydet" : "Müşteriyi oluştur"}
       </button>
     </form>

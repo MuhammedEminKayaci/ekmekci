@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronRight, Plus, Search } from "lucide-react";
+import { ChevronRight, HandCoins, Plus, Search, Users, Wallet } from "lucide-react";
+import { AnimatedNumber } from "@/components/animated-number";
 import { Sheet } from "@/components/sheet";
-import { Balance, Button, Empty, PageHeader, Stat, TypeChip, cx, inputClass } from "@/components/ui";
+import { Balance, BalanceBadge, Button, Empty, PageHeader, Stat, TypeChip, cx, inputClass, order } from "@/components/ui";
 import { balanceTone, money, shortDate } from "@/lib/format";
 import { CustomerForm } from "./customer-form";
 
@@ -22,16 +23,19 @@ export type CustomerItem = {
 type Filter = "active" | "debt" | "credit" | "passive";
 
 const FILTERS: Array<{ value: Filter; label: string }> = [
-  { value: "active", label: "Aktif" },
+  { value: "active", label: "Hepsi" },
   { value: "debt", label: "Borçlu" },
   { value: "credit", label: "Alacaklı" },
   { value: "passive", label: "Pasif" },
 ];
 
-export function CustomerList({ customers }: { customers: CustomerItem[] }) {
+const ROW_GRID =
+  "md:grid md:grid-cols-[minmax(12rem,2fr)_minmax(6rem,0.8fr)_minmax(7rem,0.9fr)_minmax(10rem,1.1fr)_1.5rem] md:items-center md:gap-4";
+
+export function CustomerList({ customers, openNew = false }: { customers: CustomerItem[]; openNew?: boolean }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("active");
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(openNew);
 
   const totals = useMemo(() => {
     let receivable = 0;
@@ -57,40 +61,56 @@ export function CustomerList({ customers }: { customers: CustomerItem[] }) {
     });
   }, [customers, query, filter]);
 
+  function closeCreate() {
+    setCreating(false);
+    if (openNew) window.history.replaceState(null, "", "/musteriler");
+  }
+
   return (
     <>
       <PageHeader
         title="Müşteriler"
-        description="Her müşterinin kendi ekmek fiyatı ve güncel bakiyesi."
+        description="Her müşterinin kendi ekmek fiyatı ve güncel hesabı. Bir müşteriye dokunarak kartını ve hesap dökümünü açın."
         actions={
-          <Button variant="primary" onClick={() => setCreating(true)}>
-            <Plus size={18} /> Yeni müşteri
+          <Button variant="primary" onClick={() => setCreating(true)} className="w-full sm:w-auto">
+            <Plus size={19} /> Yeni müşteri ekle
           </Button>
         }
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:mb-8 sm:grid-cols-3">
-        <div className="neu col-span-2 rounded-tile p-5 sm:col-span-1">
-          <Stat label="Toplam alacağımız" value={<span className="text-debt">{money(totals.receivable)}</span>} hint="Borçlu müşterilerin toplamı" />
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:mb-8 sm:grid-cols-3 sm:gap-5">
+        <div style={order(1)} className="neu animate-rise col-span-2 rounded-tile p-5 sm:col-span-1">
+          <Stat
+            icon={Wallet}
+            tone="debt"
+            label="Bize borçları"
+            value={<span className="text-debt"><AnimatedNumber value={totals.receivable} /></span>}
+            hint="Borçlu müşterilerin toplamı"
+          />
         </div>
-        <div className="neu rounded-tile p-5">
-          <Stat label="Müşteri alacağı" value={<span className="text-credit">{money(Math.abs(totals.credit))}</span>} hint="Fazla ödenen" />
+        <div style={order(2)} className="neu animate-rise rounded-tile p-5">
+          <Stat
+            icon={HandCoins}
+            tone="brand"
+            label="Fazla ödenen"
+            value={<span className="text-credit"><AnimatedNumber value={Math.abs(totals.credit)} /></span>}
+          />
         </div>
-        <div className="neu rounded-tile p-5">
-          <Stat label="Aktif müşteri" value={totals.active} hint={`${customers.length} kayıtlı`} />
+        <div style={order(3)} className="neu animate-rise rounded-tile p-5">
+          <Stat icon={Users} tone="sky" label="Aktif müşteri" value={totals.active} hint={`${customers.length} kayıtlı`} />
         </div>
       </div>
 
-      <section className="neu rounded-tile">
+      <section style={order(4)} className="neu animate-rise rounded-tile">
         <div className="flex flex-col gap-3 p-4 sm:p-5 md:flex-row md:items-center md:justify-between">
-          <div className="relative md:w-80">
-            <Search size={17} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-ink-3" />
+          <div className="relative md:w-96">
+            <Search size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-ink-3" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="İsimle ara"
+              placeholder="Müşteri adıyla ara"
               aria-label="Müşteri ara"
-              className={cx(inputClass, "pl-10")}
+              className={cx(inputClass, "pl-11")}
             />
           </div>
           <div className="neu-inset grid grid-cols-4 rounded-full p-1 md:inline-grid" role="group" aria-label="Filtre">
@@ -101,8 +121,8 @@ export function CustomerList({ customers }: { customers: CustomerItem[] }) {
                 aria-pressed={filter === f.value}
                 onClick={() => setFilter(f.value)}
                 className={cx(
-                  "min-h-9 rounded-full px-3 text-[0.82rem] font-semibold transition-shadow",
-                  filter === f.value ? "neu-sm text-ink" : "text-ink-2",
+                  "min-h-10 rounded-full px-4 text-[0.85rem] font-semibold transition-all duration-300",
+                  filter === f.value ? "brand-fill" : "text-ink-2 hover:text-ink",
                 )}
               >
                 {f.label}
@@ -114,34 +134,41 @@ export function CustomerList({ customers }: { customers: CustomerItem[] }) {
         {visible.length === 0 ? (
           customers.length === 0 ? (
             <Empty title="İlk müşterinizi ekleyin">
-              Müşteri kartında adını ve ekmek fiyatını girin; siparişlerde hemen kullanabilirsiniz.
+              <p>Adını ve ekmek fiyatını yazmanız yeterli. Sonra Siparişler sayfasında hemen kullanabilirsiniz.</p>
+              <Button variant="primary" onClick={() => setCreating(true)} className="mt-4">
+                <Plus size={18} /> Yeni müşteri ekle
+              </Button>
             </Empty>
           ) : (
             <Empty title="Sonuç yok">Aramayı ya da filtreyi değiştirin.</Empty>
           )
         ) : (
           <>
-            <div className="hidden border-y border-line px-6 py-2.5 text-[0.78rem] font-semibold text-ink-3 md:grid md:grid-cols-[minmax(12rem,2fr)_minmax(6rem,1fr)_minmax(7rem,1fr)_minmax(8rem,1fr)_1.5rem] md:gap-4">
+            <div className={cx("hidden border-y border-line px-6 py-3 text-[0.8rem] font-semibold text-ink-3", ROW_GRID)}>
               <span>Müşteri</span>
-              <span className="text-right">Fiyat</span>
+              <span className="text-right">Ekmek fiyatı</span>
               <span className="text-right">Son kayıt</span>
-              <span className="text-right">Bakiye</span>
+              <span className="text-right">Hesap</span>
               <span />
             </div>
-            <ul className="flex flex-col gap-2.5 px-3 pb-3 sm:px-4 md:gap-0 md:px-0 md:pb-2">
-              {visible.map((c) => (
-                <li key={c.id}>
+            <ul key={filter} className="flex flex-col gap-2.5 px-3 pb-3 sm:px-4 md:gap-0 md:px-0 md:pb-2">
+              {visible.map((c, i) => (
+                <li key={c.id} style={order(Math.min(i, 12))} className="animate-rise">
                   <Link
                     href={`/musteriler/${c.id}`}
-                    className="neu-sm flex items-center gap-3 rounded-2xl p-4 md:grid md:grid-cols-[minmax(12rem,2fr)_minmax(6rem,1fr)_minmax(7rem,1fr)_minmax(8rem,1fr)_1.5rem] md:gap-4 md:rounded-none md:border-b md:border-line md:bg-transparent md:px-6 md:py-3.5 md:shadow-none md:hover:bg-bg-deep/60"
+                    className={cx(
+                      "neu-sm group flex items-center gap-3 rounded-2xl p-4 transition-colors duration-200",
+                      "md:rounded-none md:border-b md:border-line md:bg-transparent md:px-6 md:py-4 md:shadow-none md:hover:bg-brand-soft/40",
+                      ROW_GRID,
+                    )}
                   >
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-2">
-                        <span className="truncate font-semibold text-ink">{c.name}</span>
+                        <span className="truncate text-[1.02rem] font-semibold text-ink">{c.name}</span>
                         <TypeChip type={c.type} />
                       </p>
                       <p className="tnum mt-0.5 truncate text-[0.8rem] text-ink-3 md:hidden">
-                        {money(c.current_price)} / adet
+                        Ekmek {money(c.current_price)}
                         {c.last_entry_date ? ` · son kayıt ${shortDate(c.last_entry_date)}` : ""}
                       </p>
                       {c.address && <p className="hidden truncate text-[0.8rem] text-ink-3 md:block">{c.address}</p>}
@@ -150,8 +177,11 @@ export function CustomerList({ customers }: { customers: CustomerItem[] }) {
                     <span className="tnum hidden text-right text-ink-2 md:block">
                       {c.last_entry_date ? shortDate(c.last_entry_date) : "—"}
                     </span>
-                    <Balance value={c.balance} className="shrink-0 text-right" />
-                    <ChevronRight size={18} className="shrink-0 text-ink-3" />
+                    <span className="flex shrink-0 flex-col items-end gap-0.5">
+                      <Balance value={c.balance} />
+                      <BalanceBadge value={c.balance} />
+                    </span>
+                    <ChevronRight size={18} className="shrink-0 text-ink-3 transition-transform duration-300 group-hover:translate-x-1" />
                   </Link>
                 </li>
               ))}
@@ -160,8 +190,8 @@ export function CustomerList({ customers }: { customers: CustomerItem[] }) {
         )}
       </section>
 
-      <Sheet open={creating} onClose={() => setCreating(false)} title="Yeni müşteri">
-        <CustomerForm onDone={() => setCreating(false)} />
+      <Sheet open={creating} onClose={closeCreate} title="Yeni müşteri">
+        <CustomerForm onDone={closeCreate} />
       </Sheet>
     </>
   );

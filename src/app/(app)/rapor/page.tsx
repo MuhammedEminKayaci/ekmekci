@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { ChartColumn, HandCoins, Scale, Users, Wallet } from "lucide-react";
+import { AnimatedNumber } from "@/components/animated-number";
 import { PairChart } from "@/components/pair-chart";
-import { Balance, Empty, PageHeader, Skeleton, Stat, Tile, TileTitle, TypeChip, WeekNav } from "@/components/ui";
+import { Balance, BalanceBadge, Empty, IconChip, PageHeader, Skeleton, Stat, Tile, TileTitle, TypeChip, WeekNav, order } from "@/components/ui";
 import { addDays, isISODate, money, qty, shortDate, todayTR, weekDays, weekStart, weekdayShort } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 
@@ -65,39 +67,75 @@ async function Report({ searchParams }: { searchParams: Search }) {
       />
 
       <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
-        <Tile className="col-span-2">
-          <Stat label="Net satış" value={money(t.net)} size="lg" hint={`${qty(t.delivered - t.returned)} ekmek net`} />
-          <div className="mt-5 grid grid-cols-3 gap-3 border-t border-line pt-4">
-            <Stat label="Verilen" value={qty(t.delivered)} />
-            <Stat label="İade" value={qty(t.returned)} />
-            <Stat label="İade oranı" value={`%${returnRate.toLocaleString("tr-TR")}`} />
+        <section style={order(1)} className="brand-fill animate-rise col-span-2 rounded-tile p-5 sm:p-7">
+          <p className="text-[0.85rem] font-semibold text-white/80">Haftanın net satışı</p>
+          <p className="font-display tnum text-[2.5rem] leading-none font-semibold tracking-[-0.03em] sm:text-[3rem]">
+            <AnimatedNumber value={t.net} />
+          </p>
+          <p className="mt-1 text-[0.85rem] text-white/75">{qty(t.delivered - t.returned)} ekmek net satıldı</p>
+          <div className="mt-6 grid grid-cols-3 gap-3 rounded-2xl bg-white/12 p-3.5 sm:p-4">
+            {[
+              { label: "Verilen", value: `${qty(t.delivered)} adet` },
+              { label: "İade", value: `${qty(t.returned)} adet` },
+              { label: "İade oranı", value: `%${returnRate.toLocaleString("tr-TR")}` },
+            ].map((s) => (
+              <div key={s.label} className="min-w-0">
+                <p className="text-[0.75rem] font-semibold text-white/75">{s.label}</p>
+                <p className="font-display tnum truncate text-[1.15rem] font-semibold sm:text-[1.3rem]">{s.value}</p>
+              </div>
+            ))}
           </div>
-        </Tile>
-        <Tile>
-          <Stat label="Tahsilat" value={money(t.collection)} hint={`${active.length} müşteriden`} />
-        </Tile>
-        <Tile>
+        </section>
+        <Tile i={2} className="col-span-2 sm:col-span-1">
           <Stat
-            label="Hafta farkı"
+            icon={HandCoins}
+            tone="sky"
+            label="Alınan para"
+            value={<AnimatedNumber value={t.collection} />}
+            hint={`${active.length} müşteriden`}
+          />
+        </Tile>
+        <Tile i={3} className="col-span-2 sm:col-span-1">
+          <Stat
+            icon={Scale}
+            tone={t.delta > 0 ? "debt" : "brand"}
+            label="Haftanın sonucu"
             value={<Balance value={t.delta} />}
-            hint={t.delta > 0 ? "Satış tahsilattan fazla" : t.delta < 0 ? "Tahsilat satıştan fazla" : "Denk"}
+            hint={t.delta > 0 ? "Satış, alınan paradan fazla" : t.delta < 0 ? "Alınan para, satıştan fazla" : "Tam denk"}
           />
         </Tile>
 
-        <Tile className="col-span-2">
-          <TileTitle>Günlere göre</TileTitle>
+        <Tile i={4} className="col-span-2">
+          <TileTitle icon={<IconChip icon={ChartColumn} tone="brand" size="sm" />}>Günlere göre</TileTitle>
           <PairChart points={points} />
         </Tile>
-        <Tile className="col-span-2 flex flex-col justify-between gap-5 sm:flex-row lg:flex-col">
-          <Stat label="Hafta sonu toplam alacağımız" value={<span className="text-debt">{money(t.receivable)}</span>} hint="Borçlu müşteriler, hafta kapanışı" />
-          <Stat label="Müşterilerin alacağı" value={<span className="text-credit">{money(Math.abs(t.credit))}</span>} hint="Fazla ödenen, hafta kapanışı" />
+        <Tile i={5} className="col-span-2 flex flex-col gap-4">
+          <TileTitle icon={<IconChip icon={Wallet} tone="debt" size="sm" />}>Hafta sonunda açık hesaplar</TileTitle>
+          <div className="grid flex-1 grid-cols-1 gap-3 xs:grid-cols-2">
+            <div className="flex flex-col justify-center rounded-2xl bg-debt-soft p-5">
+              <p className="text-[0.82rem] font-semibold text-debt">Bize borçları</p>
+              <p className="font-display tnum mt-1 text-[1.7rem] font-semibold text-debt">
+                <AnimatedNumber value={t.receivable} />
+              </p>
+              <p className="text-[0.78rem] text-debt/80">Borçlu müşterilerin toplamı</p>
+            </div>
+            <div className="flex flex-col justify-center rounded-2xl bg-credit-soft p-5">
+              <p className="text-[0.82rem] font-semibold text-credit">Fazla ödenen</p>
+              <p className="font-display tnum mt-1 text-[1.7rem] font-semibold text-credit">
+                <AnimatedNumber value={Math.abs(t.credit)} />
+              </p>
+              <p className="text-[0.78rem] text-credit/80">Müşterilerin alacağı</p>
+            </div>
+          </div>
         </Tile>
       </div>
 
-      <section className="neu mt-5 rounded-tile">
+      <section style={order(6)} className="neu animate-rise mt-5 rounded-tile">
         <div className="p-5 sm:p-6">
-          <h2 className="font-display text-[1.15rem] font-semibold tracking-tight">Müşteri bazında</h2>
-          <p className="text-[0.85rem] text-ink-3">Devreden + hafta farkı = kapanış bakiyesi</p>
+          <h2 className="flex items-center gap-2.5 font-display text-[1.15rem] font-semibold tracking-tight">
+            <IconChip icon={Users} tone="sky" size="sm" /> Müşteri bazında
+          </h2>
+          <p className="mt-1 text-[0.85rem] text-ink-3">Önceki haftalardan devreden + bu haftanın sonucu = hafta sonundaki hesap</p>
         </div>
         {rows.length === 0 ? (
           <Empty title="Bu hafta hareket yok">Siparişler sayfasında bu haftaya kayıt girildiğinde rapor oluşur.</Empty>
@@ -109,15 +147,15 @@ async function Report({ searchParams }: { searchParams: Search }) {
               <span className="text-right">Verilen</span>
               <span className="text-right">İade</span>
               <span className="text-right">Tutar</span>
-              <span className="text-right">Tahsilat</span>
+              <span className="text-right">Alınan</span>
               <span className="text-right">Hafta</span>
-              <span className="text-right">Bakiye</span>
+              <span className="text-right">Hesap</span>
             </div>
             <ul className="flex flex-col gap-2.5 px-3 pb-3 sm:px-4 lg:gap-0 lg:px-0 lg:pb-2">
               {rows.map((r) => (
                 <li
                   key={r.customer_id}
-                  className="neu-sm rounded-2xl p-4 lg:grid lg:grid-cols-[minmax(11rem,1.6fr)_repeat(7,minmax(5rem,1fr))] lg:items-center lg:gap-4 lg:rounded-none lg:border-b lg:border-line lg:bg-transparent lg:px-6 lg:py-3 lg:shadow-none"
+                  className="neu-sm rounded-2xl p-4 lg:grid lg:grid-cols-[minmax(11rem,1.6fr)_repeat(7,minmax(5rem,1fr))] lg:items-center lg:gap-4 lg:rounded-none lg:border-b lg:border-line lg:bg-transparent lg:px-6 lg:py-3 lg:shadow-none lg:transition-colors lg:hover:bg-brand-soft/40"
                 >
                   <div className="mb-3 flex items-start justify-between gap-3 lg:mb-0">
                     <Link href={`/musteriler/${r.customer_id}?grup=week`} className="min-w-0 hover:underline">
@@ -127,8 +165,8 @@ async function Report({ searchParams }: { searchParams: Search }) {
                       </span>
                     </Link>
                     <span className="text-right lg:hidden">
-                      <span className="block text-[0.72rem] font-semibold text-ink-3">Bakiye</span>
                       <Balance value={r.closing_balance} />
+                      <span className="mt-0.5 block"><BalanceBadge value={r.closing_balance} /></span>
                     </span>
                   </div>
                   <dl className="tnum grid grid-cols-3 gap-x-3 gap-y-2 text-[0.88rem] lg:contents">
@@ -136,7 +174,7 @@ async function Report({ searchParams }: { searchParams: Search }) {
                     <Cell label="Verilen" value={qty(r.delivered_qty)} />
                     <Cell label="İade" value={qty(r.returned_qty)} />
                     <Cell label="Tutar" value={money(r.net_amount)} />
-                    <Cell label="Tahsilat" value={money(r.collection)} />
+                    <Cell label="Alınan" value={money(r.collection)} />
                     <Cell label="Hafta" value={<Balance value={r.period_delta} className="font-medium" />} />
                     <div className="hidden text-right lg:block">
                       <Balance value={r.closing_balance} />

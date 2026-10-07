@@ -1,4 +1,4 @@
-import { cx } from "@/components/ui";
+import { cx, order } from "@/components/ui";
 import { money } from "@/lib/format";
 
 export type PairPoint = { key: string; label: string; sublabel?: string; sale: number; collect: number };
@@ -12,10 +12,10 @@ export function PairChart({ points, height = 168 }: { points: PairPoint[]; heigh
     <figure className="flex flex-col gap-4">
       <figcaption className="flex flex-wrap items-center gap-4 text-[0.8rem] text-ink-2">
         <span className="inline-flex items-center gap-2">
-          <span className="size-2.5 rounded-[3px] bg-series-sale" aria-hidden /> Net satış
+          <span className="size-2.5 rounded-[3px] bg-series-sale" aria-hidden /> Satış
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="size-2.5 rounded-[3px] bg-series-collect" aria-hidden /> Tahsilat
+          <span className="size-2.5 rounded-[3px] bg-series-collect" aria-hidden /> Alınan para
         </span>
       </figcaption>
 
@@ -23,15 +23,15 @@ export function PairChart({ points, height = 168 }: { points: PairPoint[]; heigh
         <div className="absolute inset-x-0 bottom-0 border-t border-line" aria-hidden />
         <div className="absolute inset-x-0 top-0 border-t border-dashed border-line" aria-hidden />
         <ol className="relative grid h-full items-end gap-1 sm:gap-2" style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}>
-          {points.map((p) => (
+          {points.map((p, i) => (
             <li
               key={p.key}
               tabIndex={0}
               aria-label={`${p.label} ${p.sublabel ?? ""}: net satış ${money(p.sale)}, tahsilat ${money(p.collect)}`}
-              className="group relative flex h-full items-end justify-center gap-[2px] rounded-lg outline-none hover:bg-bg-deep/60 focus-visible:bg-bg-deep/60"
+              className="group relative flex h-full items-end justify-center gap-[2px] rounded-lg outline-none transition-colors duration-200 hover:bg-brand-soft/60 focus-visible:bg-brand-soft/60"
             >
-              <span className="w-full max-w-4 rounded-t-[4px] bg-series-sale" style={{ height: pct(p.sale) }} />
-              <span className="w-full max-w-4 rounded-t-[4px] bg-series-collect" style={{ height: pct(p.collect) }} />
+              <span className="animate-grow w-full max-w-5 rounded-t-[5px] bg-series-sale" style={{ height: pct(p.sale), ...order(i) }} />
+              <span className="animate-grow w-full max-w-5 rounded-t-[5px] bg-series-collect" style={{ height: pct(p.collect), ...order(i) }} />
               <span
                 role="tooltip"
                 className={cx(
@@ -42,8 +42,8 @@ export function PairChart({ points, height = 168 }: { points: PairPoint[]; heigh
                 <span className="block font-semibold text-ink">
                   {p.label} {p.sublabel}
                 </span>
-                <span className="tnum block text-ink-2">Net satış {money(p.sale)}</span>
-                <span className="tnum block text-ink-2">Tahsilat {money(p.collect)}</span>
+                <span className="tnum block text-ink-2">Satış {money(p.sale)}</span>
+                <span className="tnum block text-ink-2">Alınan para {money(p.collect)}</span>
               </span>
             </li>
           ))}

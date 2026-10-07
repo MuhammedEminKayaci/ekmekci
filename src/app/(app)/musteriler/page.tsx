@@ -6,14 +6,17 @@ import { CustomerList, type CustomerItem } from "./customer-list";
 
 export const metadata: Metadata = { title: "Müşteriler" };
 
-async function Customers() {
+type Search = Promise<{ yeni?: string }>;
+
+async function Customers({ searchParams }: { searchParams: Search }) {
+  const sp = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase
     .from("customer_overview")
     .select("id, name, type, address, is_active, current_price, balance, last_entry_date")
     .order("name");
 
-  return <CustomerList customers={(data ?? []) as CustomerItem[]} />;
+  return <CustomerList customers={(data ?? []) as CustomerItem[]} openNew={sp.yeni === "1"} />;
 }
 
 function ListSkeleton() {
@@ -33,10 +36,10 @@ function ListSkeleton() {
   );
 }
 
-export default function CustomersPage() {
+export default function CustomersPage({ searchParams }: PageProps<"/musteriler">) {
   return (
     <Suspense fallback={<ListSkeleton />}>
-      <Customers />
+      <Customers searchParams={searchParams as Search} />
     </Suspense>
   );
 }

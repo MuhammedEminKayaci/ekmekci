@@ -1,64 +1,92 @@
 @import "tailwindcss";
 
 /* -----------------------------------------------------------------------------
-   Tasarım değişkenleri
-   Tek taban rengi + iki gölge = yumuşak (neumorphic) yüzeyler.
-   Buğday sarısı vurgu sadece seçili/aktif durumlarda kullanılır.
+   Tasarım değişkenleri — beyaz + yeşil.
+   Yüzeyler zemin rengiyle aynı tonda, iki yumuşak gölgeyle kabarır (neumorphism).
+   Yeşil marka rengi; amber iade, mavi tahsilat, kırmızı borç için ayrılmıştır.
 ----------------------------------------------------------------------------- */
 
 :root {
-  --bg: #e6e9ee;
-  --bg-deep: #dde1e7;
-  --ink: #1c232c;
-  --ink-2: #4f5a68;
-  --ink-3: #75808e;
-  --line: rgba(28, 35, 44, 0.08);
+  --bg: #f2f7f3;
+  --bg-deep: #e6efe8;
+  --surface: #f7fbf8;
+  --ink: #10241a;
+  --ink-2: #48604f;
+  --ink-3: #6f8476;
+  --line: rgba(16, 36, 26, 0.08);
 
-  --wheat: #d6a03e;
-  --wheat-deep: #b57f1f;
-  --wheat-ink: #2b1d05;
+  --brand: #0f9150;
+  --brand-deep: #0a6e3b;
+  --brand-ink: #ffffff;
+  --fill-a: #12a159;
+  --fill-b: #0a6e3b;
+  --brand-soft: rgba(15, 145, 80, 0.11);
+  --brand-glow: rgba(15, 145, 80, 0.28);
 
-  --debt: #b0263f;
-  --debt-soft: rgba(176, 38, 63, 0.1);
-  --credit: #0f7558;
-  --credit-soft: rgba(15, 117, 88, 0.11);
+  --side-a: #0d7a44;
+  --side-b: #08532e;
 
-  --sh-light: rgba(255, 255, 255, 0.92);
-  --sh-dark: rgba(150, 162, 180, 0.55);
+  --amber: #b26a00;
+  --amber-soft: rgba(214, 140, 20, 0.14);
+  --sky: #2f6fd6;
+  --sky-soft: rgba(47, 111, 214, 0.12);
 
-  --focus: #2f5bd3;
+  --debt: #c9283f;
+  --debt-soft: rgba(201, 40, 63, 0.1);
+  --credit: #0a7a42;
+  --credit-soft: rgba(10, 122, 66, 0.11);
 
-  /* Grafik serileri (renk körlüğü testinden geçti) */
-  --series-sale: #a8721a;
-  --series-collect: #3f6fb0;
+  --sh-light: rgba(255, 255, 255, 1);
+  --sh-dark: rgba(116, 150, 128, 0.32);
+
+  --focus: #0f9150;
+
+  --series-sale: #0f9150;
+  --series-collect: #2f6fd6;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
 
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1f242b;
-    --bg-deep: #1a1e24;
-    --ink: #e8ecf1;
-    --ink-2: #aab3bf;
-    --ink-3: #828c99;
-    --line: rgba(232, 236, 241, 0.08);
+    --bg: #111a15;
+    --bg-deep: #0d1511;
+    --surface: #141f19;
+    --ink: #e5efe8;
+    --ink-2: #a6b8ad;
+    --ink-3: #7d9285;
+    --line: rgba(229, 239, 232, 0.08);
 
-    --wheat: #e2b05a;
-    --wheat-deep: #c99134;
-    --wheat-ink: #241803;
+    --brand: #22b467;
+    --brand-deep: #14904f;
+    --brand-ink: #ffffff;
+    --fill-a: #15894b;
+    --fill-b: #0c5e33;
+    --brand-soft: rgba(34, 180, 103, 0.14);
+    --brand-glow: rgba(34, 180, 103, 0.25);
 
-    --debt: #ff7f93;
-    --debt-soft: rgba(255, 127, 147, 0.12);
-    --credit: #4fd1a8;
-    --credit-soft: rgba(79, 209, 168, 0.12);
+    --side-a: #0f2c1e;
+    --side-b: #0a1d14;
 
-    --sh-light: rgba(255, 255, 255, 0.05);
-    --sh-dark: rgba(0, 0, 0, 0.5);
+    --amber: #f0b44c;
+    --amber-soft: rgba(240, 180, 76, 0.13);
+    --sky: #7ea6ef;
+    --sky-soft: rgba(126, 166, 239, 0.13);
 
-    --focus: #8fb0ff;
+    --debt: #ff8195;
+    --debt-soft: rgba(255, 129, 149, 0.12);
+    --credit: #5ad89c;
+    --credit-soft: rgba(90, 216, 156, 0.12);
 
-    --series-sale: #b07a16;
+    --sh-light: rgba(255, 255, 255, 0.045);
+    --sh-dark: rgba(0, 0, 0, 0.55);
+
+    --focus: #5ad89c;
+
+    --series-sale: #1c9e5a;
     --series-collect: #5b8de0;
 
     color-scheme: dark;
@@ -68,13 +96,19 @@
 @theme inline {
   --color-bg: var(--bg);
   --color-bg-deep: var(--bg-deep);
+  --color-surface: var(--surface);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
   --color-line: var(--line);
-  --color-wheat: var(--wheat);
-  --color-wheat-deep: var(--wheat-deep);
-  --color-wheat-ink: var(--wheat-ink);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-sky: var(--sky);
+  --color-sky-soft: var(--sky-soft);
   --color-debt: var(--debt);
   --color-debt-soft: var(--debt-soft);
   --color-credit: var(--credit);
@@ -86,10 +120,11 @@
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
 
-  --radius-tile: 1.75rem;
+  --radius-tile: 1.6rem;
   --radius-control: 0.95rem;
 
   --breakpoint-xs: 26rem;
+  --breakpoint-3xl: 112rem;
 }
 
 /* -----------------------------------------------------------------------------
@@ -97,17 +132,17 @@
 ----------------------------------------------------------------------------- */
 
 @utility neu {
-  background: var(--bg);
+  background: var(--surface);
   box-shadow:
-    9px 9px 20px var(--sh-dark),
-    -9px -9px 20px var(--sh-light);
+    10px 10px 24px var(--sh-dark),
+    -10px -10px 24px var(--sh-light);
 }
 
 @utility neu-sm {
-  background: var(--bg);
+  background: var(--surface);
   box-shadow:
-    4px 4px 10px var(--sh-dark),
-    -4px -4px 10px var(--sh-light);
+    5px 5px 12px var(--sh-dark),
+    -5px -5px 12px var(--sh-light);
 }
 
 @utility neu-inset {
@@ -120,22 +155,125 @@
 @utility neu-pressed {
   background: var(--bg-deep);
   box-shadow:
-    inset 5px 5px 11px var(--sh-dark),
-    inset -5px -5px 11px var(--sh-light);
+    inset 4px 4px 10px var(--sh-dark),
+    inset -4px -4px 10px var(--sh-light);
 }
 
-@utility wheat-fill {
-  background: linear-gradient(145deg, var(--wheat), var(--wheat-deep));
-  color: var(--wheat-ink);
+/* Dolu yeşil yüzey (ana buton, vurgu kartı) */
+@utility brand-fill {
+  background: linear-gradient(150deg, var(--fill-a), var(--fill-b));
+  color: var(--brand-ink);
   box-shadow:
-    5px 5px 12px var(--sh-dark),
-    -4px -4px 10px var(--sh-light),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    0 10px 24px -8px var(--brand-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 @utility tnum {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
+}
+
+/* -----------------------------------------------------------------------------
+   Hareket — tek bir giriş dili: yumuşak yükselme. Hepsi reduced-motion'a uyar.
+----------------------------------------------------------------------------- */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+}
+
+@keyframes pulse-soft {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@utility animate-rise {
+  animation: rise 520ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+@utility animate-fade {
+  animation: fade 360ms var(--ease-out) both;
+}
+
+@utility animate-pop {
+  animation: pop 360ms var(--ease-out) both;
+}
+
+@utility animate-grow {
+  transform-origin: bottom;
+  animation: grow-y 700ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 45ms + 150ms);
+}
+
+@utility animate-toast {
+  animation: toast-in 380ms var(--ease-spring) both;
+}
+
+/* Tıklanabilir yüzeylerde hafif kalkma */
+@utility lift {
+  transition:
+    transform 260ms var(--ease-out),
+    box-shadow 260ms var(--ease-out);
+  &:hover {
+    transform: translateY(-2px);
+  }
+  &:active {
+    transform: translateY(0) scale(0.99);
+  }
 }
 
 /* -----------------------------------------------------------------------------
@@ -155,6 +293,10 @@ body {
   line-height: 1.5;
 }
 
+::selection {
+  background: var(--brand-soft);
+}
+
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 3px;
@@ -166,33 +308,23 @@ input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-input[type="number"] {
-  -moz-appearance: textfield;
-}
 
 dialog::backdrop {
-  background: rgba(20, 25, 32, 0.38);
-  backdrop-filter: blur(3px);
+  background: rgba(8, 30, 18, 0.35);
+  backdrop-filter: blur(4px);
 }
 
-@keyframes sheet-in {
-  from {
-    transform: translateY(24px);
-    opacity: 0;
-  }
-  to {
-    transform: none;
-    opacity: 1;
-  }
+dialog[open]::backdrop {
+  animation: fade 300ms var(--ease-out) both;
 }
 
 dialog[open] {
-  animation: sheet-in 180ms ease-out;
+  animation: sheet-up 460ms var(--ease-spring) both;
 }
 
-@keyframes pulse-soft {
-  50% {
-    opacity: 0.55;
+@media (min-width: 40rem) {
+  dialog[open] {
+    animation: sheet-in 360ms var(--ease-spring) both;
   }
 }
 
@@ -207,6 +339,7 @@ dialog[open] {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
   }
 }

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Manrope } from "next/font/google";
+import { Toaster } from "@/components/toast";
 import "./globals.css";
 
 const display = Bricolage_Grotesque({
@@ -22,15 +23,18 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#e6e9ee" },
-    { media: "(prefers-color-scheme: dark)", color: "#1f242b" },
+    { media: "(prefers-color-scheme: light)", color: "#f2f7f3" },
+    { media: "(prefers-color-scheme: dark)", color: "#111a15" },
   ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="tr" className={`${display.variable} ${body.variable} h-full antialiased`}>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }
