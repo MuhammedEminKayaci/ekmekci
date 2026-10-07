@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ekmekçi
 
-## Getting Started
+Ekmek dağıtımı, iade ve tahsilat takibi. Müşteri başına fiyat, günlük kayıt, haftalık rapor ve hesap dökümü.
 
-First, run the development server:
+**Sürüm:** 1.0 · **Geliştirici:** [www.kayacimedia.com](https://www.kayacimedia.com) · **Destek:** 0552 218 34 18
+
+## Teknoloji
+
+- Next.js 16 (App Router, Server Actions, Cache Components), TypeScript, Tailwind CSS 4
+- Supabase (PostgreSQL, Auth, Row Level Security)
+- Barındırma: Vercel
+
+## Vercel'e yayın
+
+1. Vercel'de **Add New → Project** ile bu GitHub deposunu içe aktarın. Framework otomatik "Next.js" seçilir.
+2. **Environment Variables** bölümüne üç değişkeni girin:
+
+   | Değişken | Değer |
+   |---|---|
+   | `NEXT_PUBLIC_SUPABASE_URL` | `https://huteelmisrwjvcjsquit.supabase.co` |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → API Keys → Publishable key |
+   | `SUPABASE_SECRET_KEY` | Supabase → API Keys → Secret key (sadece sunucuda kullanılır) |
+
+3. **Deploy**'a basın.
+4. Yayın adresini Supabase → Authentication → URL Configuration → **Site URL** alanına yazın.
+
+## Kullanıcılar
+
+- Dışarıdan kayıt olma **kapalıdır**. Kullanıcıları Supabase → Authentication → Users → **Add user** ile siz açarsınız.
+- İlk açılan hesap otomatik **yönetici** olur. Sonra açılan hesaplar **pasif** başlar; aktif etmek için
+  Supabase → Table Editor → `profiles` tablosunda ilgili satırın `is_active` değerini `true` yapın.
+
+## İş kuralları
+
+- Bakiye: **+ müşteri borçlu**, **− müşteri alacaklı** (fazla ödemiş).
+- Günlük tutar = (verilen − iade) × o günkü müşteri fiyatı − alınan para.
+- Fiyat değişikliği geçmiş satışları etkilemez; her satış kendi gününün fiyatını saklar (`customer_prices`).
+- Geçmiş haftalar kilitlidir. Açmak için: Table Editor → `app_settings` → `lock_past_weeks = false`.
+- Her değişiklik `audit_log` tablosunda kimin, neyi, ne zaman değiştirdiğiyle saklanır (yalnızca yönetici görür).
+
+## Geliştirme
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local   # değerleri doldurun
+npm install
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Veri tabanı değişiklikleri `supabase/migrations` altındadır; canlıya göndermek için:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+supabase link --project-ref huteelmisrwjvcjsquit
+supabase db push
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`supabase/seed.sql` yalnızca yerel geliştirme içindir; canlı veri tabanına uygulanmaz.
