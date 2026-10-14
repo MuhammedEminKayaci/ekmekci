@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   Check,
   CopyPlus,
+  FileSpreadsheet,
   HandCoins,
   Lock,
   Plus,
@@ -20,6 +21,7 @@ import { Sheet } from "@/components/sheet";
 import { toast } from "@/components/toast";
 import { Balance, BalanceBadge, Button, Empty, IconChip, cx, inputClass, order } from "@/components/ui";
 import { DayOrder } from "./day-order";
+import { downloadDayList } from "./day-export";
 import { addCustomersToDay, copyDayFromLastWeek, deleteOrder, saveOrder } from "@/lib/actions";
 import { balanceTone, longDate, money, parseAmount, qty, weekdayLong, weekdayShort } from "@/lib/format";
 
@@ -73,6 +75,7 @@ export function WeekBoard({
   const [adding, setAdding] = useState(false);
   const [ordering, setOrdering] = useState(false);
   const [copying, startCopy] = useTransition();
+  const [exporting, startExport] = useTransition();
 
   // Ekle/sil sonrası sunucudan gelen güncel liste.
   const [lastServerRows, setLastServerRows] = useState(serverRows);
@@ -107,6 +110,26 @@ export function WeekBoard({
 
   function patchRow(id: number, patch: Partial<BoardRow>) {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  }
+
+  function exportList() {
+    startExport(async () => {
+      try {
+        await downloadDayList(
+          day,
+          dayRows.map((r) => ({
+            name: r.customer_name,
+            delivered: r.delivered_qty,
+            returned: r.returned_qty,
+            collection: r.collection,
+            total: totals(r.customer_id),
+          })),
+        );
+        toast(`${weekdayLong(day)} listesi indirildi.`);
+      } catch {
+        toast("Liste oluşturulamadı. Tekrar deneyin.", "error");
+      }
+    });
   }
 
   function copyLastWeek() {
@@ -196,20 +219,28 @@ export function WeekBoard({
               </p>
             )}
           </div>
-          {!locked && !ordering && (
+          {!ordering && (
             <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:justify-end">
-              {dayRows.length > 1 && (
-                <Button onClick={() => setOrdering(true)} className="col-span-2 sm:col-span-1">
+              <Button onClick={exportList} disabled={exporting}>
+                <FileSpreadsheet size={18} className="text-brand-deep dark:text-brand" />
+                {exporting ? "Hazırlanıyor…" : "Liste çıkar"}
+              </Button>
+              {!locked && dayRows.length > 1 && (
+                <Button onClick={() => setOrdering(true)}>
                   <ArrowUpDown size={18} /> Sırayı düzenle
                 </Button>
               )}
-              <Button onClick={copyLastWeek} disabled={copying}>
-                <CopyPlus size={18} />
-                {copying ? "Getiriliyor…" : "Geçen haftayı getir"}
-              </Button>
-              <Button variant="primary" onClick={() => setAdding(true)}>
-                <Plus size={19} /> Müşteri ekle
-              </Button>
+              {!locked && (
+                <>
+                  <Button onClick={copyLastWeek} disabled={copying}>
+                    <CopyPlus size={18} />
+                    {copying ? "Getiriliyor…" : "Geçen haftayı getir"}
+                  </Button>
+                  <Button variant="primary" onClick={() => setAdding(true)}>
+                    <Plus size={19} /> Müşteri ekle
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </div>
