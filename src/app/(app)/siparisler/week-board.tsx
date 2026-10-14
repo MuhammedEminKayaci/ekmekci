@@ -44,7 +44,7 @@ function sum(rows: BoardRow[], f: (r: BoardRow) => number) {
 }
 
 const GRID =
-  "lg:grid lg:grid-cols-[minmax(11rem,1.5fr)_repeat(3,minmax(7rem,1fr))_minmax(6.5rem,0.9fr)_minmax(9rem,1.1fr)_3rem] lg:items-center lg:gap-4";
+  "xl:grid xl:grid-cols-[minmax(9rem,1.4fr)_repeat(3,minmax(6rem,1fr))_minmax(5.5rem,0.8fr)_minmax(7.5rem,1fr)_minmax(8rem,1fr)_2.5rem] xl:items-center xl:gap-3 2xl:gap-4";
 
 export function WeekBoard({
   weekStart,
@@ -54,6 +54,7 @@ export function WeekBoard({
   locked,
   rows: serverRows,
   customers,
+  balances,
 }: {
   weekStart: string;
   days: string[];
@@ -62,6 +63,7 @@ export function WeekBoard({
   locked: boolean;
   rows: BoardRow[];
   customers: BoardCustomer[];
+  balances: Record<number, number>;
 }) {
   const [day, setDay] = useState(initialDay);
   const [rows, setRows] = useState(serverRows);
@@ -82,6 +84,16 @@ export function WeekBoard({
   }, [rows, days]);
 
   const dayRows = byDay.get(day) ?? [];
+
+  // Toplam hesap = sunucudaki bakiye + bu haftada yazılan ama henüz yenilenmemiş değişiklikler.
+  const totals = useMemo(() => {
+    const diff = new Map<number, number>();
+    const original = new Map(serverRows.map((r) => [r.id, delta(r)]));
+    for (const r of rows) {
+      diff.set(r.customer_id, (diff.get(r.customer_id) ?? 0) + delta(r) - (original.get(r.id) ?? 0));
+    }
+    return (customerId: number) => (balances[customerId] ?? 0) + (diff.get(customerId) ?? 0);
+  }, [rows, serverRows, balances]);
 
   function selectDay(d: string) {
     setDay(d);
@@ -165,11 +177,11 @@ export function WeekBoard({
               </p>
             ) : (
               dayRows.length > 0 && (
-                <p className="mt-1 text-[0.88rem] text-ink-2 lg:hidden">Sayıları yazmanız yeterli, her şey otomatik kaydedilir.</p>
+                <p className="mt-1 text-[0.88rem] text-ink-2 xl:hidden">Sayıları yazmanız yeterli, her şey otomatik kaydedilir.</p>
               )
             )}
             {!locked && dayRows.length > 0 && (
-              <p className="mt-1 hidden text-[0.88rem] text-ink-2 lg:block">
+              <p className="mt-1 hidden text-[0.88rem] text-ink-2 xl:block">
                 Kutucuğa yazın, <kbd className="rounded-md bg-bg-deep px-1.5 py-0.5 text-[0.78rem] font-semibold">Enter</kbd> ile
                 sonrakine geçin. Her şey otomatik kaydedilir.
               </p>
@@ -218,12 +230,20 @@ export function WeekBoard({
               <span>İade ekmek</span>
               <span>Alınan para</span>
               <span className="text-right">Tutar</span>
-              <span className="text-right">Sonuç</span>
+              <span className="text-right">Bugünkü sonuç</span>
+              <span className="text-right">Toplam hesap</span>
               <span />
             </div>
-            <ul className="flex flex-col gap-3 px-3 pb-3 sm:px-4 lg:gap-0 lg:px-0 lg:pb-0">
+            <ul className="flex flex-col gap-3 px-3 pb-3 sm:px-4 xl:gap-0 xl:px-0 xl:pb-0">
               {dayRows.map((r, i) => (
-                <OrderRow key={r.id} index={i} row={r} readOnly={locked || r.is_locked} onDraft={(p) => patchRow(r.id, p)} />
+                <OrderRow
+                  key={r.id}
+                  index={i}
+                  row={r}
+                  total={totals(r.customer_id)}
+                  readOnly={locked || r.is_locked}
+                  onDraft={(p) => patchRow(r.id, p)}
+                />
               ))}
             </ul>
             <DayTotals rows={dayRows} />
@@ -272,8 +292,8 @@ function NumberBox({
   ariaLabel: string;
 }) {
   return (
-    <label className="flex min-w-0 flex-col gap-1 lg:block">
-      <span className="text-[0.74rem] font-semibold text-ink-2 lg:sr-only">{label}</span>
+    <label className="flex min-w-0 flex-col gap-1 xl:block">
+      <span className="text-[0.74rem] font-semibold text-ink-2 xl:sr-only">{label}</span>
       <span className="relative block">
         <input
           value={value}
@@ -310,11 +330,13 @@ function NumberBox({
 function OrderRow({
   row,
   index,
+  total,
   readOnly,
   onDraft,
 }: {
   row: BoardRow;
   index: number;
+  total: number;
   readOnly: boolean;
   onDraft: (patch: Partial<BoardRow>) => void;
 }) {
@@ -379,7 +401,7 @@ function OrderRow({
   return (
     <li
       style={order(index)}
-      className="neu-sm animate-rise rounded-2xl p-4 lg:rounded-none lg:border-b lg:border-line lg:bg-transparent lg:px-6 lg:py-3.5 lg:shadow-none lg:transition-colors lg:hover:bg-brand-soft/40"
+      className="neu-sm animate-rise rounded-2xl p-4 xl:rounded-none xl:border-b xl:border-line xl:bg-transparent xl:px-6 xl:py-3.5 xl:shadow-none xl:transition-colors xl:hover:bg-brand-soft/40"
     >
       <div className={cx("flex flex-col gap-3", GRID)}>
         <div className="flex items-start justify-between gap-3">
@@ -400,12 +422,12 @@ function OrderRow({
               )}
             </p>
           </div>
-          <span className="lg:hidden">
+          <span className="xl:hidden">
             <BalanceBadge value={rowDelta} kind="delta" />
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:contents">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 xl:contents">
           <NumberBox
             label="Verilen"
             unit="adet"
@@ -436,9 +458,9 @@ function OrderRow({
           />
         </div>
 
-        <div className="flex items-center gap-2 lg:contents">
+        <div className="flex flex-wrap items-center gap-2 xl:contents">
         {/* Mobil: sonuç cümlesi */}
-        <p className="tnum flex-1 rounded-xl bg-bg-deep/70 px-3 py-2 text-[0.85rem] text-ink-2 lg:hidden">
+        <p className="tnum flex-1 rounded-xl bg-bg-deep/70 px-3 py-2 text-[0.85rem] text-ink-2 xl:hidden">
           Tutar <b className="text-ink">{money(rowNet)}</b> · Ödenen <b className="text-ink">{money(row.collection)}</b>
           {tone !== "zero" && (
             <>
@@ -450,13 +472,26 @@ function OrderRow({
           )}
         </p>
 
-        <p className="tnum hidden text-right text-[1rem] font-semibold lg:block">{money(rowNet)}</p>
-        <div className="hidden flex-col items-end gap-0.5 lg:flex">
+        {/* Mobil: müşterinin toplam hesabı */}
+        <div className="order-last flex basis-full items-center justify-between gap-3 rounded-xl border border-edge px-3 py-2 xl:hidden">
+          <span className="text-[0.82rem] font-semibold text-ink-2">Toplam hesap</span>
+          <span className="flex items-center gap-2">
+            <Balance value={total} />
+            <BalanceBadge value={total} kind="total" />
+          </span>
+        </div>
+
+        <p className="tnum hidden text-right text-[1rem] font-semibold xl:block">{money(rowNet)}</p>
+        <div className="hidden flex-col items-end gap-0.5 xl:flex">
           <Balance value={rowDelta} />
           <BalanceBadge value={rowDelta} kind="delta" />
         </div>
+        <div className="hidden flex-col items-end gap-0.5 xl:flex">
+          <Balance value={total} className="text-[1.02rem]" />
+          <BalanceBadge value={total} kind="total" />
+        </div>
 
-        <div className="shrink-0 lg:block">
+        <div className="shrink-0 xl:block">
           {!readOnly && (
             <button
               type="button"
@@ -495,7 +530,7 @@ function DayTotals({ rows }: { rows: BoardRow[] }) {
     { label: "Alınan para", value: money(sum(rows, (r) => r.collection)), icon: HandCoins, tone: "sky" as const },
   ];
   return (
-    <div className="m-3 mt-4 grid grid-cols-2 gap-4 rounded-2xl neu-inset p-4 sm:m-4 md:grid-cols-5 lg:m-6 lg:p-5">
+    <div className="m-3 mt-4 grid grid-cols-2 gap-4 rounded-2xl neu-inset p-4 sm:m-4 md:grid-cols-5 xl:m-6 xl:p-5">
       {items.map((it) => (
         <div key={it.label} className="flex items-center gap-3">
           <IconChip icon={it.icon} tone={it.tone} size="sm" />

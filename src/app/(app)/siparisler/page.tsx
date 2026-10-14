@@ -22,14 +22,16 @@ async function Board({ searchParams }: { searchParams: Search }) {
     supabase.rpc("get_week_board", { p_date: start }),
     supabase
       .from("customer_overview")
-      .select("id, name, type, current_price")
-      .eq("is_active", true)
+      .select("id, name, type, current_price, is_active, balance")
       .order("name"),
     supabase.from("app_settings").select("lock_past_weeks").maybeSingle(),
   ]);
 
   const hrefFor = (offset: number) => `/siparisler?hafta=${addDays(start, offset * 7)}`;
   const locked = (settings?.lock_past_weeks ?? true) && start < currentWeek;
+  const all = customers ?? [];
+  // Müşterinin bütün geçmişiyle güncel toplam hesabı (+ borç, − alacak).
+  const balances = Object.fromEntries(all.map((c) => [c.id!, Number(c.balance ?? 0)]));
 
   return (
     <>
@@ -48,7 +50,8 @@ async function Board({ searchParams }: { searchParams: Search }) {
         initialDay={day}
         locked={locked}
         rows={(rows ?? []) as BoardRow[]}
-        customers={(customers ?? []) as BoardCustomer[]}
+        customers={all.filter((c) => c.is_active) as BoardCustomer[]}
+        balances={balances}
       />
     </>
   );

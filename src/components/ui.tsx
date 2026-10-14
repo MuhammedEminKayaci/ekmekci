@@ -151,6 +151,7 @@ export function Balance({ value, className }: { value: number; className?: strin
 const BADGE_TEXT = {
   balance: { debt: "Borçlu", credit: "Alacaklı", zero: "Hesap kapalı" },
   delta: { debt: "Borç yazıldı", credit: "Fazla ödedi", zero: "Tam ödedi" },
+  total: { debt: "Kalan borç", credit: "Alacaklı", zero: "Hesap kapalı" },
 } as const;
 
 /** Bakiyeyi kelimeyle anlatır: renk tek başına bilgi taşımaz. */
