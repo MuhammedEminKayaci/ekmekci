@@ -47,3 +47,6 @@ supabase/.branches
 
 # playwright ekran görüntüleri
 .playwright-mcp
+
+# veri tabanı yedekleri (müşteri verisi içerir)
+backups/

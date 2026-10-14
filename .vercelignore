@@ -6,3 +6,4 @@ supabase/.branches
 .next
 node_modules
 *.tsbuildinfo
+backups/
