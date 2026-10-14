@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   ArrowDownLeft,
+  ArrowUpDown,
   ArrowUpRight,
   Check,
   CopyPlus,
@@ -18,6 +19,7 @@ import {
 import { Sheet } from "@/components/sheet";
 import { toast } from "@/components/toast";
 import { Balance, BalanceBadge, Button, Empty, IconChip, cx, inputClass, order } from "@/components/ui";
+import { DayOrder } from "./day-order";
 import { addCustomersToDay, copyDayFromLastWeek, deleteOrder, saveOrder } from "@/lib/actions";
 import { balanceTone, longDate, money, parseAmount, qty, weekdayLong, weekdayShort } from "@/lib/format";
 
@@ -27,6 +29,7 @@ export type BoardRow = {
   customer_name: string;
   customer_type: number;
   entry_date: string;
+  sort_order: number;
   delivered_qty: number;
   returned_qty: number;
   unit_price: number;
@@ -68,6 +71,7 @@ export function WeekBoard({
   const [day, setDay] = useState(initialDay);
   const [rows, setRows] = useState(serverRows);
   const [adding, setAdding] = useState(false);
+  const [ordering, setOrdering] = useState(false);
   const [copying, startCopy] = useTransition();
 
   // Ekle/sil sonrası sunucudan gelen güncel liste.
@@ -97,6 +101,7 @@ export function WeekBoard({
 
   function selectDay(d: string) {
     setDay(d);
+    setOrdering(false);
     window.history.replaceState(null, "", `/siparisler?hafta=${weekStart}&gun=${d}`);
   }
 
@@ -171,7 +176,11 @@ export function WeekBoard({
               {weekdayLong(day)}
               <span className="ml-2 font-sans text-[0.95rem] font-medium text-ink-3">{longDate(day)}</span>
             </h2>
-            {locked ? (
+            {ordering ? (
+              <p className="mt-1 inline-flex items-center gap-1.5 text-[0.88rem] font-semibold text-brand-deep dark:text-brand">
+                <ArrowUpDown size={15} /> Müşteri sırasını düzenliyorsunuz.
+              </p>
+            ) : locked ? (
               <p className="mt-1 inline-flex items-center gap-1.5 text-[0.88rem] text-ink-2">
                 <Lock size={14} /> Geçmiş hafta. Kayıtlar sadece görüntülenir, değiştirilemez.
               </p>
@@ -180,15 +189,20 @@ export function WeekBoard({
                 <p className="mt-1 text-[0.88rem] text-ink-2 xl:hidden">Sayıları yazmanız yeterli, her şey otomatik kaydedilir.</p>
               )
             )}
-            {!locked && dayRows.length > 0 && (
+            {!locked && !ordering && dayRows.length > 0 && (
               <p className="mt-1 hidden text-[0.88rem] text-ink-2 xl:block">
                 Kutucuğa yazın, <kbd className="rounded-md bg-bg-deep px-1.5 py-0.5 text-[0.78rem] font-semibold">Enter</kbd> ile
                 sonrakine geçin. Her şey otomatik kaydedilir.
               </p>
             )}
           </div>
-          {!locked && (
-            <div className="grid grid-cols-2 gap-2.5 sm:flex">
+          {!locked && !ordering && (
+            <div className="grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:justify-end">
+              {dayRows.length > 1 && (
+                <Button onClick={() => setOrdering(true)} className="col-span-2 sm:col-span-1">
+                  <ArrowUpDown size={18} /> Sırayı düzenle
+                </Button>
+              )}
               <Button onClick={copyLastWeek} disabled={copying}>
                 <CopyPlus size={18} />
                 {copying ? "Getiriliyor…" : "Geçen haftayı getir"}
@@ -200,7 +214,13 @@ export function WeekBoard({
           )}
         </div>
 
-        {dayRows.length === 0 ? (
+        {ordering ? (
+          <DayOrder
+            day={day}
+            items={dayRows.map((r) => ({ id: r.id, name: r.customer_name }))}
+            onClose={() => setOrdering(false)}
+          />
+        ) : dayRows.length === 0 ? (
           locked ? (
             <Empty title="Bu gün için kayıt yok" />
           ) : (

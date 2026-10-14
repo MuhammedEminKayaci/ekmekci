@@ -121,12 +121,36 @@ export async function addCustomersToDay(date: string, customerIds: number[]): Pr
   if (ids.length === 0) return { ok: false, error: "En az bir müşteri seçin." };
 
   const supabase = await createClient();
+  // Seçilen sırayla günün sonuna eklenir; zaten listede olanlar yerinde kalır.
+  const { data: last } = await supabase
+    .from("orders")
+    .select("sort_order")
+    .eq("entry_date", date)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const base = last?.sort_order ?? 0;
+
   const { error } = await supabase
     .from("orders")
     .upsert(
-      ids.map((customer_id) => ({ customer_id, entry_date: date })),
+      ids.map((customer_id, i) => ({ customer_id, entry_date: date, sort_order: base + i + 1 })),
       { onConflict: "customer_id,entry_date", ignoreDuplicates: true },
     );
+  if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true };
+}
+
+/** Günün listesini verilen sırayla kaydeder (ids[0] en üstte). */
+export async function reorderDay(date: string, orderIds: number[]): Promise<ActionResult> {
+  if (!isISODate(date)) return { ok: false, error: "Geçersiz tarih." };
+  const ids = orderIds.filter((n) => Number.isInteger(n) && n > 0);
+  if (ids.length === 0) return { ok: true };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reorder_day", { p_date: date, p_ids: ids });
   if (error) return { ok: false, error: friendly(error) };
 
   refresh();
@@ -140,9 +164,10 @@ export async function copyDayFromLastWeek(date: string): Promise<ActionResult<nu
   const supabase = await createClient();
   const { data: prev, error: readErr } = await supabase
     .from("orders")
-    .select("customer_id, customers!inner(is_active)")
+    .select("customer_id, sort_order, customers!inner(is_active)")
     .eq("entry_date", addDays(date, -7))
-    .eq("customers.is_active", true);
+    .eq("customers.is_active", true)
+    .order("sort_order");
   if (readErr) return { ok: false, error: friendly(readErr) };
   if (!prev?.length) return { ok: false, error: "Geçen haftanın bu gününde kayıt yok." };
 

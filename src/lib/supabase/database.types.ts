@@ -176,6 +176,7 @@ export type Database = {
           note: string | null
           return_amount: number | null
           returned_qty: number
+          sort_order: number
           unit_price: number
           updated_at: string
           updated_by: string | null
@@ -194,6 +195,7 @@ export type Database = {
           note?: string | null
           return_amount?: number | null
           returned_qty?: number
+          sort_order?: number
           unit_price?: number
           updated_at?: string
           updated_by?: string | null
@@ -212,6 +214,7 @@ export type Database = {
           note?: string | null
           return_amount?: number | null
           returned_qty?: number
+          sort_order?: number
           unit_price?: number
           updated_at?: string
           updated_by?: string | null
@@ -372,8 +375,13 @@ export type Database = {
           note: string
           return_amount: number
           returned_qty: number
+          sort_order: number
           unit_price: number
         }[]
+      }
+      reorder_day: {
+        Args: { p_date: string; p_ids: number[] }
+        Returns: undefined
       }
       set_customer_price: {
         Args: { p_customer_id: number; p_price: number; p_valid_from?: string }
