@@ -7,13 +7,17 @@
 # Elle çalıştırma:  bash yerel-yedek.sh          (bugünün yedeği varsa atlar)
 #                   bash yerel-yedek.sh --zorla  (yeniden alır)
 set -euo pipefail
+# Yedekler müşteri verisi ve şifre özetleri içerir: yalnızca bu kullanıcı okuyabilsin.
+umask 077
 
 DEST="$HOME/Ekmekci-Yedekleri"
 KEEP_DAYS=90
 BIN=/opt/homebrew/opt/libpq/bin
 LOG="$DEST/yedek.log"
 
-mkdir -p "$DEST"
+mkdir -p -m 700 "$DEST"
+chmod 700 "$DEST"
+touch "$LOG" && chmod 600 "$LOG"
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >>"$LOG"; }
 notify() {
   /usr/bin/osascript -e "display notification \"$2\" with title \"Ekmekçi yedek\" subtitle \"$1\"" >/dev/null 2>&1 || true
@@ -52,6 +56,7 @@ done
 COUNTS=$("$BIN/psql" "$URL" -At -c "select (select count(*) from public.customers)||' müşteri, '||(select count(*) from public.orders)||' sipariş'" 2>>"$LOG" || echo "sayım alınamadı")
 
 mv "$TMP" "$OUT"
+chmod 600 "$OUT"
 log "OK $(basename "$OUT") ($(du -h "$OUT" | cut -f1), $TABLES tablo, $COUNTS)"
 
 # Eski yedekleri temizle
