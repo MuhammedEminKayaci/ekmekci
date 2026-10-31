@@ -56,3 +56,42 @@ supabase db push
 ```
 
 `supabase/seed.sql` yalnızca yerel geliştirme içindir; canlı veri tabanına uygulanmaz.
+
+## Yedekler
+
+### Otomatik günlük yedek (Supabase içinde)
+
+Supabase her gece **03:00**'te (Türkiye) bütün uygulama verisinin tam kopyasını alır: müşteriler, fiyat geçmişi,
+siparişler, kullanıcı profilleri ve ayarlar. Bilgisayarın açık olması gerekmez. Kopyalar `yedek.gunluk` tablosunda
+**60 gün** saklanır, daha eskileri kendiliğinden silinir. Bu şema API'ye kapalıdır; uygulamadan ya da dışarıdan erişilemez.
+
+Supabase → SQL Editor'de:
+
+```sql
+-- Yedekleri listele
+select gun, alindi, musteri_sayisi, siparis_sayisi, bakiye from yedek.gunluk order by gun desc;
+
+-- Şimdi elle yedek al (aynı gün tekrar alınırsa o günün kopyası güncellenir)
+select yedek.al();
+
+-- Zamanlanmış görevin son çalışmaları
+select status, return_message, start_time from cron.job_run_details order by start_time desc limit 10;
+
+-- Bir günün siparişlerini yedekten tablo olarak görüntüle
+select r.* from yedek.gunluk g, jsonb_populate_recordset(null::public.orders, g.veri->'orders') r
+where g.gun = '2026-10-31';
+```
+
+> Geri yükleme canlı veriyi değiştirir; önce mutlaka güncel tam yedek alın.
+> Not: Proje tamamen silinirse bu yedekler de gider; bu yüzden ara ara aşağıdaki tam yedeği bilgisayara da alın.
+
+### Tam yedek (bilgisayara)
+
+PostgreSQL 17 sunucusu için `pg_dump` 17+ gerekir (`brew install libpq`):
+
+```bash
+/opt/homebrew/opt/libpq/bin/pg_dump "<veri tabanı adresi>" -Fc -Z 9 -n public -n private -n auth -f ekmekci.dump
+```
+
+İsteğe bağlı: `scripts/yerel-yedek.sh` aynı yedeği her gün Mac'te otomatik almak için hazırdır
+(adres Anahtar Zinciri'nden okunur, yedekler `~/Ekmekci-Yedekleri` klasörüne yazılır, 90 gün saklanır).
