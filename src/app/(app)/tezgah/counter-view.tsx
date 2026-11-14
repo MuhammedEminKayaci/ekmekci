@@ -92,9 +92,9 @@ export function CounterView({
         </p>
       )}
 
-      <div className="grid gap-4 sm:gap-5 lg:grid-cols-12">
+      <div className="grid gap-4 sm:gap-5 lg:grid-cols-12 lg:grid-rows-[auto_1fr]">
         {/* Toplam: fiş görünümü */}
-        <section className="animate-rise order-first flex flex-col overflow-hidden rounded-tile shadow-[0_24px_48px_-24px_rgba(8,60,32,0.45)] lg:order-last lg:col-span-5 lg:row-span-2 lg:min-h-[34rem]">
+        <section className="animate-rise order-first flex flex-col overflow-hidden rounded-tile shadow-[0_24px_48px_-24px_rgba(8,60,32,0.45)] lg:order-none lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1 lg:min-h-[34rem]">
           <div className="brand-fill relative overflow-hidden p-5 sm:p-7">
             <div className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-white/[0.07]" aria-hidden />
             <div className="relative flex items-center justify-between gap-3">
@@ -164,7 +164,7 @@ export function CounterView({
         </section>
 
         {/* Ekmek parası */}
-        <Tile i={1} className="lg:col-span-7">
+        <Tile i={1} className="lg:col-span-7 lg:col-start-1 lg:row-start-1">
           <TileTitle icon={<IconChip icon={Wheat} tone="amber" size="sm" />}>Tezgahtan gelen ekmek parası</TileTitle>
           <span className="relative block">
             <input
@@ -186,7 +186,7 @@ export function CounterView({
         </Tile>
 
         {/* Ek ürünler */}
-        <Tile i={2} className="lg:col-span-7">
+        <Tile i={2} className="flex flex-col lg:col-span-7 lg:col-start-1 lg:row-start-2">
           <TileTitle
             icon={<IconChip icon={ShoppingBasket} tone="sky" size="sm" />}
             aside={itemsTotal > 0 ? <span className="tnum text-[0.9rem] font-semibold">{money(itemsTotal)}</span> : undefined}
