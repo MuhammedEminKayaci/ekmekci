@@ -38,20 +38,22 @@ async function Counter({ searchParams }: { searchParams: Search }) {
   // tezgahta ekmek, çeşidi fark etmeksizin tek tutar olarak girilir.
   const breadCats = new Set((categories ?? []).filter((c) => c.is_bread).map((c) => c.id));
   const key = (n: string) => n.toLocaleLowerCase("tr").replace(/\s+/g, " ").trim();
-  const lastPrice = new Map<string, number>();
-  for (const r of recent ?? []) if (!lastPrice.has(key(r.name))) lastPrice.set(key(r.name), Number(r.unit_price));
   const breadNames = new Set((products ?? []).filter((p) => breadCats.has(p.category_id)).map((p) => key(p.name)));
+  // Sıra: en son satılanlar önce (hızlı seçimde ilk 4'ü görünür), sonra katalogdaki diğer ek ürünler.
+  const catalogExtra = (products ?? []).filter((p) => !breadCats.has(p.category_id));
+  const catalogByKey = new Map(catalogExtra.map((p) => [key(p.name), p]));
   const picks = new Map<string, number | null>();
-  for (const p of products ?? []) {
-    if (breadCats.has(p.category_id)) continue;
-    picks.set(p.name, lastPrice.get(key(p.name)) ?? (p.suggested_price == null ? null : Number(p.suggested_price)));
-  }
-  const pickedKeys = new Set([...picks.keys()].map(key));
+  const seen = new Set<string>();
   for (const r of recent ?? []) {
     const k = key(r.name);
-    if (pickedKeys.has(k) || breadNames.has(k)) continue;
-    pickedKeys.add(k);
-    picks.set(r.name, Number(r.unit_price));
+    if (seen.has(k) || breadNames.has(k)) continue;
+    seen.add(k);
+    picks.set(catalogByKey.get(k)?.name ?? r.name, Number(r.unit_price));
+  }
+  for (const p of catalogExtra) {
+    if (seen.has(key(p.name))) continue;
+    seen.add(key(p.name));
+    picks.set(p.name, p.suggested_price == null ? null : Number(p.suggested_price));
   }
 
   return (
@@ -68,7 +70,7 @@ async function Counter({ searchParams }: { searchParams: Search }) {
         day={day}
         bread={Number(row?.sales_income ?? 0)}
         sales={(sales ?? []).map((r) => ({ ...r, qty: Number(r.qty), unit_price: Number(r.unit_price), amount: Number(r.amount) }))}
-        picks={[...picks].slice(0, 16).map(([name, price]) => ({ name, price }))}
+        picks={[...picks].slice(0, 300).map(([name, price]) => ({ name, price }))}
         locked={locked}
       />
     </>

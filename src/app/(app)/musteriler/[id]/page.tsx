@@ -79,6 +79,10 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
   if (!customer || customer.id == null) notFound();
 
   const rows = [...(statement ?? [])].reverse();
+  const hasAccount = rows.some((r) => Number(r.account_delta) !== 0);
+  const STMT_GRID = hasAccount
+    ? "lg:grid-cols-[minmax(10rem,1.6fr)_repeat(7,minmax(5.5rem,1fr))]"
+    : "lg:grid-cols-[minmax(10rem,1.6fr)_repeat(6,minmax(5.5rem,1fr))]";
   const owned = ((customer.products ?? []) as unknown as OwnedProduct[]).map((p) => ({
     ...p,
     history: (prices ?? []).filter((h) => h.product_id === p.product_id).slice(0, 4),
@@ -181,12 +185,13 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
             <Empty title="Bu aralıkta hareket yok">Siparişler sayfasından bu müşteriye kayıt girildiğinde burada görünür.</Empty>
           ) : (
             <>
-              <div className="hidden border-y border-line px-6 py-2.5 text-[0.78rem] font-semibold text-ink-3 lg:grid lg:grid-cols-[minmax(10rem,1.6fr)_repeat(6,minmax(5.5rem,1fr))] lg:gap-4">
+              <div className={`hidden border-y border-line px-6 py-2.5 text-[0.78rem] font-semibold text-ink-3 lg:grid ${STMT_GRID} lg:gap-4`}>
                 <span>Dönem</span>
                 <span className="text-right">Verilen</span>
                 <span className="text-right">İade</span>
                 <span className="text-right">Tutar</span>
                 <span className="text-right">Alınan para</span>
+                {hasAccount && <span className="text-right" title="Veresiye alış (−) ve cariye ödeme (+)">Cari</span>}
                 <span className="text-right">Fark</span>
                 <span className="text-right">Hesap</span>
               </div>
@@ -194,7 +199,7 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
                 {rows.map((r) => (
                   <li
                     key={r.period_start}
-                    className="neu-sm rounded-2xl p-4 lg:grid lg:grid-cols-[minmax(10rem,1.6fr)_repeat(6,minmax(5.5rem,1fr))] lg:items-center lg:gap-4 lg:rounded-none lg:border-b lg:border-line lg:bg-transparent lg:px-6 lg:py-3 lg:shadow-none lg:transition-colors lg:hover:bg-brand-soft/40"
+                    className={`neu-sm rounded-2xl p-4 lg:grid ${STMT_GRID} lg:items-center lg:gap-4 lg:rounded-none lg:border-b lg:border-line lg:bg-transparent lg:px-6 lg:py-3 lg:shadow-none lg:transition-colors lg:hover:bg-brand-soft/40`}
                   >
                     <div className="mb-3 flex items-baseline justify-between gap-3 lg:mb-0 lg:block">
                       <p className="font-semibold">{periodLabel(group, r.period_start)}</p>
@@ -207,6 +212,7 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
                       <Cell label="İade" value={qty(r.returned_qty)} />
                       <Cell label="Tutar" value={money(r.net_amount)} />
                       <Cell label="Alınan" value={money(r.collection)} />
+                      {hasAccount && <Cell label="Cari" value={Number(r.account_delta) ? <Balance value={Number(r.account_delta)} className="font-medium" /> : "—"} />}
                       <Cell label="Fark" value={<Balance value={r.period_delta} className="font-medium" />} />
                       <div className="hidden text-right lg:block">
                         <Balance value={r.running_balance} />

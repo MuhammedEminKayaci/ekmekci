@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Package, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { AnimatedNumber } from "@/components/animated-number";
 import { Empty, cx, inputClass, order } from "@/components/ui";
 import { categoryColor } from "@/lib/colors";
@@ -25,8 +25,20 @@ export type ProductRow = {
   todayCustomers: number;
 };
 
+// Tablo: kolonlar arası dikey çizgi; Bugün / Bu hafta / Ay kolonları kendi renginde.
 const GRID =
-  "md:grid md:grid-cols-[minmax(11rem,1.6fr)_minmax(6.5rem,0.8fr)_repeat(3,minmax(7rem,1fr))_minmax(6rem,0.75fr)_2.75rem] md:items-center md:gap-4";
+  "md:grid md:grid-cols-[minmax(11rem,1.6fr)_7.5rem_repeat(3,minmax(8rem,1fr))_minmax(6rem,0.75fr)_3rem] md:items-stretch";
+const CELL = "md:flex md:items-center md:border-l md:border-line md:px-3";
+const TONE = {
+  day: "md:bg-brand-soft/45",
+  week: "md:bg-sky-500/[0.07]",
+  month: "md:bg-violet-500/[0.07]",
+} as const;
+const HEAD_TONE = {
+  day: "md:bg-brand-soft text-brand-deep dark:text-brand",
+  week: "md:bg-sky-500/12 text-sky-700 dark:text-sky-300",
+  month: "md:bg-violet-500/12 text-violet-700 dark:text-violet-300",
+} as const;
 
 const add = (a: Sum, b: Sum): Sum => ({ qty: a.qty + b.qty, amount: a.amount + b.amount });
 const zero: Sum = { qty: 0, amount: 0 };
@@ -140,60 +152,63 @@ export function ProductsTable({
           </Empty>
         ) : (
           <>
-            <div className={cx("hidden border-y border-line px-6 py-3 text-[0.78rem] font-semibold text-ink-3", GRID)}>
-              <span>Ürün</span>
-              <span>Tür</span>
-              <span className="text-right">Bugün</span>
-              <span className="text-right">Bu hafta</span>
-              <span className="text-right">{monthName}</span>
-              <span className="text-right">Öneri fiyat</span>
-              <span />
+            <div className={cx("hidden border-y border-line text-[0.76rem] font-semibold text-ink-3", GRID)}>
+              <span className="flex items-center px-6 py-2.5">Ürün</span>
+              <span className={cx(CELL, "py-2.5")}>Tür</span>
+              <span className={cx(CELL, HEAD_TONE.day, "justify-end py-2.5")}>Bugün</span>
+              <span className={cx(CELL, HEAD_TONE.week, "justify-end py-2.5")}>Bu hafta</span>
+              <span className={cx(CELL, HEAD_TONE.month, "justify-end py-2.5")}>{monthName}</span>
+              <span className={cx(CELL, "justify-end py-2.5")}>Öneri fiyat</span>
+              <span className={CELL} />
             </div>
-            <ul>
+            <ul className="flex flex-col gap-2 px-3 pb-3 sm:px-4 md:gap-0 md:px-0 md:pb-0">
               {sorted.map((r) => {
                 const c = catById.get(r.category_id);
+                const info = [
+                  r.todayCustomers > 0 ? `Bugün ${r.todayCustomers} müşteri` : null,
+                  r.monthRoute !== 0 || r.monthCounter !== 0
+                    ? `${monthName}: dağıtım ${qty(r.monthRoute)}${r.monthCounter ? `, tezgah ${qty(r.monthCounter)}` : ""}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
                 return (
                   <li
                     key={r.id}
-                    className={cx("border-b border-line px-4 py-3 transition-colors sm:px-6 md:hover:bg-brand-soft/30", GRID, !r.is_active && "opacity-60")}
+                    title={info || undefined}
+                    className={cx(
+                      "rounded-2xl bg-bg-deep/50 p-3 transition-colors md:rounded-none md:border-b md:border-line md:bg-transparent md:p-0 md:hover:bg-brand-soft/25",
+                      GRID,
+                      !r.is_active && "opacity-60",
+                    )}
                   >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="hidden size-9 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-deep sm:grid dark:text-brand">
-                        <Package size={17} />
+                    <div className="flex min-h-10 min-w-0 items-center gap-2 md:px-6">
+                      <span className="min-w-0 flex-1 truncate">
+                        <span className="font-semibold">{r.name}</span>
+                        <span className="ml-1.5 text-[0.76rem] text-ink-3">{r.unit}</span>
+                        {!r.is_active && <span className="ml-2 rounded-full bg-bg-deep px-2 py-0.5 text-[0.68rem] font-semibold text-ink-2">Pasif</span>}
                       </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-2">
-                          <span className="truncate font-semibold">{r.name}</span>
-                          {c && (
-                            <span className="md:hidden">
-                              <CategoryChip category={c} />
-                            </span>
-                          )}
-                          {!r.is_active && <span className="rounded-full bg-bg-deep px-2 py-0.5 text-[0.68rem] font-semibold text-ink-2">Pasif</span>}
+                      {c && (
+                        <span className="md:hidden">
+                          <CategoryChip category={c} />
                         </span>
-                        <span className="tnum block truncate text-[0.76rem] text-ink-3">
-                          {r.unit}
-                          {r.todayCustomers > 0 && ` · bugün ${r.todayCustomers} müşteri`}
-                          {(r.monthRoute !== 0 || r.monthCounter !== 0) &&
-                            ` · ay: dağıtım ${qty(r.monthRoute)}${r.monthCounter ? `, tezgah ${qty(r.monthCounter)}` : ""}`}
-                        </span>
-                      </span>
+                      )}
                       {isAdmin && (
                         <span className="md:hidden">
                           <ProductMenu product={r} categories={categories} compact />
                         </span>
                       )}
                     </div>
-                    <span className="hidden md:block">{c && <CategoryChip category={c} />}</span>
-                    <div className="mt-2.5 grid grid-cols-3 gap-2 md:contents">
-                      <Cell label="Bugün" s={r.day} unit={r.unit} strong />
-                      <Cell label="Bu hafta" s={r.week} unit={r.unit} />
-                      <Cell label={monthName} s={r.month} unit={r.unit} />
+                    <span className={cx("hidden", CELL)}>{c && <CategoryChip category={c} />}</span>
+                    <div className="mt-1.5 grid grid-cols-3 gap-1.5 md:contents">
+                      <Cell label="Bugün" s={r.day} tone="day" />
+                      <Cell label="Bu hafta" s={r.week} tone="week" />
+                      <Cell label={monthName} s={r.month} tone="month" />
                     </div>
-                    <span className="tnum hidden text-right text-[0.9rem] text-ink-2 md:block">
+                    <span className={cx("tnum hidden justify-end text-[0.88rem] text-ink-2", CELL)}>
                       {r.suggested_price != null ? money(r.suggested_price) : "—"}
                     </span>
-                    <span className="hidden justify-end md:flex">
+                    <span className={cx("hidden justify-center", CELL, "md:px-0")}>
                       {isAdmin && <ProductMenu product={r} categories={categories} compact />}
                     </span>
                   </li>
@@ -207,15 +222,15 @@ export function ProductsTable({
   );
 }
 
-function Cell({ label, s, unit, strong }: { label: string; s: Sum; unit: string; strong?: boolean }) {
+function Cell({ label, s, tone }: { label: string; s: Sum; tone: keyof typeof TONE }) {
   return (
-    <div className={cx("min-w-0 rounded-xl bg-bg-deep/60 px-2.5 py-2 text-right md:bg-transparent md:p-0", strong && "md:font-semibold")}>
-      <p className="text-left text-[0.68rem] font-semibold text-ink-3 md:sr-only">{label}</p>
-      <p className={cx("tnum truncate text-[1rem] font-semibold", s.qty === 0 && "text-ink-3")}>
+    <div className={cx("min-w-0 rounded-lg bg-surface/70 px-2 py-1.5 md:justify-between md:gap-2 md:rounded-none md:py-1.5", CELL, TONE[tone])}>
+      <p className="text-[0.66rem] font-semibold text-ink-3 md:hidden">{label}</p>
+      <span className="tnum hidden truncate text-[0.76rem] text-ink-3 md:inline">{s.amount ? money(s.amount) : ""}</span>
+      <p className={cx("tnum truncate text-[0.98rem] font-semibold md:text-right", s.qty === 0 && "text-ink-3")}>
         {s.qty === 0 ? "—" : qty(s.qty)}
-        {s.qty !== 0 && <span className="ml-1 text-[0.72rem] font-medium text-ink-3">{unit}</span>}
       </p>
-      <p className="tnum truncate text-[0.74rem] text-ink-3">{s.amount ? money(s.amount) : ""}</p>
+      <p className="tnum truncate text-[0.7rem] text-ink-3 md:hidden">{s.amount ? money(s.amount) : ""}</p>
     </div>
   );
 }
@@ -224,7 +239,7 @@ function CategoryChip({ category }: { category: Category }) {
   return (
     <span
       className={cx(
-        "inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.74rem] leading-none font-semibold ring-1",
+        "inline-flex w-[6.25rem] items-center justify-center gap-1.5 rounded-full px-2 py-1 text-[0.74rem] leading-none font-semibold ring-1",
         categoryColor(category.color).chip,
       )}
       title={category.is_bread ? "Ekmek türü: tezgahta ek ürün olarak çıkmaz" : undefined}

@@ -138,7 +138,10 @@ export function CustomerForm({
               </div>
             );
           })}
-          <span className="text-[0.8rem] text-ink-3">Fiyatlar bu müşteriye özeldir; sonradan müşteri kartından değiştirilebilir.</span>
+          <span className="text-[0.8rem] text-ink-3">
+            Fiyatlar bu müşteriye özeldir; sonradan müşteri kartından değiştirilebilir. Sadece kendisinden alış yaptığınız bir cari
+            (ör. oduncu) için hiçbir ürün seçmeyin.
+          </span>
         </fieldset>
       )}
 

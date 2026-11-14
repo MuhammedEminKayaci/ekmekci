@@ -110,7 +110,7 @@ function readProductPrices(raw: FormDataEntryValue | null): Array<{ product_id: 
   } catch {
     return null;
   }
-  if (!Array.isArray(list) || list.length === 0 || list.length > 50) return null;
+  if (!Array.isArray(list) || list.length > 50) return null;
   const out: Array<{ product_id: number; price: number }> = [];
   const seen = new Set<number>();
   for (const item of list) {
@@ -130,7 +130,7 @@ export async function createCustomer(formData: FormData): Promise<ActionResult<n
   if (!name) return { ok: false, error: "Müşteri adı gerekli (en çok 120 karakter)." };
   if (address === undefined || note === undefined) return { ok: false, error: "Adres ya da not çok uzun." };
   const products = readProductPrices(formData.get("products"));
-  if (!products) return { ok: false, error: "En az bir ürün seçip fiyatını girin." };
+  if (!products) return { ok: false, error: "Seçilen ürünlerin fiyatını girin." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_customer", {
@@ -592,6 +592,12 @@ export type ExpenseInput = {
   date: string;
   place: "driver" | "counter" | "general";
   driverId: number | null;
+  /** Cari (müşteri) bağlantısı: veresiye alış ya da cariye ödeme için. */
+  customerId?: number | null;
+  /** expense: gider; payment: cariye ödeme (gider değil, alacağı kapatır). */
+  kind?: "expense" | "payment";
+  /** cash: peşin; account: veresiye (müşterinin alacağına yazılır). */
+  payment?: "cash" | "account";
   amount: number;
   category: string | null;
   description: string | null;
@@ -609,6 +615,13 @@ export async function addExpense(input: ExpenseInput): Promise<ActionResult<Save
   if (!isISODate(input.date)) return { ok: false, error: "Geçersiz tarih." };
   if (input.place !== "driver" && input.place !== "counter" && input.place !== "general") return BAD_INPUT;
   if (input.place === "driver" && !isId(input.driverId)) return { ok: false, error: "Dağıtıcı seçin." };
+  const kind = input.kind ?? "expense";
+  const payment = kind === "payment" ? "cash" : (input.payment ?? "cash");
+  const customerId = input.customerId ?? null;
+  if (kind !== "expense" && kind !== "payment") return BAD_INPUT;
+  if (payment !== "cash" && payment !== "account") return BAD_INPUT;
+  if (customerId !== null && !isId(customerId)) return BAD_INPUT;
+  if ((kind === "payment" || payment === "account") && customerId === null) return { ok: false, error: "Cari (müşteri) seçin." };
   const amount = moneyValue(input.amount);
   if (amount == null || amount <= 0) return { ok: false, error: "Gider tutarı girin." };
   const category = text(input.category, 40);
@@ -622,6 +635,9 @@ export async function addExpense(input: ExpenseInput): Promise<ActionResult<Save
       entry_date: input.date,
       place: input.place,
       driver_id: input.place === "driver" ? input.driverId : null,
+      customer_id: customerId,
+      kind,
+      payment,
       amount,
       category,
       description,

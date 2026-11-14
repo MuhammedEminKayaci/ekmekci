@@ -422,10 +422,13 @@ export type Database = {
           category: string | null
           created_at: string
           created_by: string | null
+          customer_id: number | null
           description: string | null
           driver_id: number | null
           entry_date: string
           id: number
+          kind: string
+          payment: string
           place: string
           updated_at: string
         }
@@ -434,10 +437,13 @@ export type Database = {
           category?: string | null
           created_at?: string
           created_by?: string | null
+          customer_id?: number | null
           description?: string | null
           driver_id?: number | null
           entry_date: string
           id?: never
+          kind?: string
+          payment?: string
           place: string
           updated_at?: string
         }
@@ -446,10 +452,13 @@ export type Database = {
           category?: string | null
           created_at?: string
           created_by?: string | null
+          customer_id?: number | null
           description?: string | null
           driver_id?: number | null
           entry_date?: string
           id?: never
+          kind?: string
+          payment?: string
           place?: string
           updated_at?: string
         }
@@ -459,6 +468,20 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {
@@ -782,6 +805,7 @@ export type Database = {
           p_to: string
         }
         Returns: {
+          account_delta: number
           collection: number
           delivered_qty: number
           gross_amount: number

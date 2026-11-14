@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Check, FileSpreadsheet, Lock, Minus, Plus, ShoppingBasket, Store, Trash2, Wheat } from "lucide-react";
 import { AnimatedNumber } from "@/components/animated-number";
+import { Combobox } from "@/components/combobox";
 import { toast } from "@/components/toast";
 import { Button, IconChip, Tile, TileTitle, cx, inputClass } from "@/components/ui";
 import { addCounterSale, deleteCounterSale, saveCounterBread } from "@/lib/actions";
@@ -246,6 +247,7 @@ function AddSale({ day, picks }: { day: string; picks: Pick[] }) {
   const [price, setPrice] = useState("");
   const [pending, start] = useTransition();
   const priceValue = parseAmount(price);
+  const quick = picks.slice(0, 4);
 
   function choose(p: Pick) {
     setName(p.name);
@@ -254,7 +256,7 @@ function AddSale({ day, picks }: { day: string; picks: Pick[] }) {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return toast("Ürün adını yazın.", "error");
+    if (!name.trim()) return toast("Ürün seçin ya da adını yazın.", "error");
     if (priceValue == null) return toast("Fiyatı yazın.", "error");
     start(async () => {
       const res = await addCounterSale({ date: day, name, qty: count, unitPrice: priceValue });
@@ -269,9 +271,10 @@ function AddSale({ day, picks }: { day: string; picks: Pick[] }) {
 
   return (
     <form onSubmit={submit} className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed border-edge-strong p-3 sm:p-4">
-      {picks.length > 0 && (
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Hızlı seçim">
-          {picks.map((p) => (
+      {quick.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Son satılanlar">
+          <span className="mr-1 text-[0.76rem] font-semibold text-ink-3">Son satılanlar</span>
+          {quick.map((p) => (
             <button
               key={p.name}
               type="button"
@@ -289,13 +292,15 @@ function AddSale({ day, picks }: { day: string; picks: Pick[] }) {
         </div>
       )}
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto_8.5rem]">
-        <input
+        <Combobox
           value={name}
-          onChange={(e) => setName(e.target.value)}
-          maxLength={60}
-          placeholder="Ürün (ör. Zeytinyağı lüks)"
-          aria-label="Ürün adı"
-          className={cx(inputClass, "col-span-2 sm:col-span-1")}
+          onChange={setName}
+          options={picks.map((p) => ({ key: p.name, label: p.name, hint: p.price != null ? money(p.price) : undefined }))}
+          onPick={(o) => choose(picks.find((p) => p.name === o.key)!)}
+          placeholder={picks.length > 4 ? `Ürün ara (${picks.length} ürün)` : "Ürün ara ya da yaz"}
+          ariaLabel="Ürün"
+          free
+          className="col-span-2 sm:col-span-1"
         />
         <div className="neu-inset flex items-center justify-between rounded-control p-1">
           <button type="button" onClick={() => setCount((c) => Math.max(1, c - 1))} className="grid size-10 place-items-center rounded-lg text-ink-2 hover:bg-surface" aria-label="Azalt">
