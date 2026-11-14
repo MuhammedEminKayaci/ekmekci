@@ -47,7 +47,7 @@ async function Expenses({ searchParams }: { searchParams: Search }) {
     <>
       <PageHeader
         title="Giderler"
-        description="Bütün giderler ve carilere (ör. oduncu) yapılan alış ve ödemeler. Veresiye alış müşteriyi alacaklı yapar; cariye ödeme o alacağı kapatır."
+        description="Bütün giderler. Bir cariye (ör. oduncu) yazılan gider o cariyi bizden alacaklı yapar; ona ödeme yapınca alacağı kapanır."
         actions={
           <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:items-end">
             <Segmented

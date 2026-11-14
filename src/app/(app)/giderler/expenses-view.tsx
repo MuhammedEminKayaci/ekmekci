@@ -88,7 +88,7 @@ export function ExpensesView({
       <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
         {[
           { label: `${periodName} gideri`, value: totalCost, icon: ReceiptText, tone: "debt" as const, hint: `${costs.length} kalem` },
-          { label: "Veresiye (cariye yazılan)", value: onAccount, icon: BookUser, tone: "amber" as const, hint: "Müşteriyi alacaklı yapar" },
+          { label: "Carilere yazılan gider", value: onAccount, icon: BookUser, tone: "amber" as const, hint: "Cari bizden alacaklı olur" },
           { label: "Carilere ödenen", value: paid, icon: HandCoins, tone: "sky" as const, hint: "Alacağı kapatır, gider değil" },
           { label: "Kasadan çıkan", value: cashOut, icon: Banknote, tone: "brand" as const, hint: "Peşin gider + cari ödeme" },
         ].map((k, i) => (
@@ -201,7 +201,7 @@ export function ExpensesView({
               </span>
               {onAccount > 0 && (
                 <span>
-                  Veresiye <b>{money(onAccount)}</b>
+                  Carilere yazılan <b>{money(onAccount)}</b>
                 </span>
               )}
               {paid > 0 && (
@@ -260,14 +260,14 @@ function LedgerRow({ e, place, customer, locked }: { e: Expense; place: string; 
       <span className={cx("block min-w-0 truncate text-[0.82rem] text-ink-3 lg:text-[0.88rem] lg:text-ink-2", CELL)}>
         <span className="lg:hidden">
           {isPayment ? "Cari ödeme" : e.category || "Gider"}
-          {e.payment === "account" ? " · veresiye" : ""}
+          {e.payment === "account" ? " · cariye yazıldı" : ""}
           {e.description ? " · " : ""}
         </span>
         {e.description || <span className="hidden lg:inline">—</span>}
         {customer && <span className="text-ink-3 lg:hidden"> · {place}</span>}
       </span>
       <span className={cx("hidden text-[0.82rem]", CELL)}>
-        {isPayment ? "Nakit" : e.payment === "account" ? <b className="font-semibold text-amber">Veresiye</b> : "Peşin"}
+        {isPayment ? "Nakit" : e.payment === "account" ? <b className="font-semibold text-amber">Cariye</b> : "Peşin"}
       </span>
       <span className={cx("tnum hidden justify-end font-semibold", CELL, isPayment ? "text-sky" : "text-debt")}>{money(e.amount)}</span>
       <span className={cx("hidden justify-center lg:px-0", CELL)}>
@@ -311,7 +311,6 @@ function EntryForm({
   const [target, setTarget] = useState("general");
   const [customerText, setCustomerText] = useState("");
   const [customerId, setCustomerId] = useState<number | null>(null);
-  const [payment, setPayment] = useState<"cash" | "account">("cash");
   const [category, setCategory] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -322,6 +321,8 @@ function EntryForm({
   const [typePending, startType] = useTransition();
 
   const picked = customers.find((c) => c.id === customerId);
+  // Cari seçilen gider her zaman o carinin hesabına yazılır (alacaklı olur); cari yoksa peşin gider.
+  const payment: "cash" | "account" = picked ? "account" : "cash";
   const targets = [
     { value: "general", label: "Genel" },
     { value: "counter", label: "Tezgah" },
@@ -331,7 +332,6 @@ function EntryForm({
   function clearCustomer() {
     setCustomerId(null);
     setCustomerText("");
-    setPayment("cash");
     setKind("expense");
   }
 
@@ -470,28 +470,10 @@ function EntryForm({
         )}
       </div>
 
-      {kind === "expense" && (
-        <div>
-          <p className={label}>Ödeme</p>
-          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Ödeme şekli">
-            <button type="button" aria-pressed={payment === "cash"} onClick={() => setPayment("cash")} className={cx(chip(payment === "cash"), "justify-center")}>
-              Peşin ödendi
-            </button>
-            <button
-              type="button"
-              aria-pressed={payment === "account"}
-              disabled={!picked}
-              onClick={() => setPayment("account")}
-              className={cx(chip(payment === "account"), "justify-center disabled:opacity-45")}
-              title={picked ? undefined : "Veresiye için önce cari seçin"}
-            >
-              Veresiye (cariye yaz)
-            </button>
-          </div>
-          {payment === "account" && picked && (
-            <p className="mt-1.5 text-[0.78rem] text-ink-3">{picked.name} bu tutar kadar bizden alacaklı olur; ödeyince “Cariye ödeme” girin.</p>
-          )}
-        </div>
+      {kind === "expense" && picked && (
+        <p className="-mt-1 text-[0.78rem] text-ink-3">
+          Gider {picked.name} hesabına yazılır; {picked.name} bu tutar kadar bizden alacaklı olur.
+        </p>
       )}
 
       {kind === "expense" && (
@@ -584,7 +566,7 @@ function EntryForm({
         />
       </div>
       <Button type="submit" variant="primary" disabled={pending} className="min-h-12 w-full">
-        <Plus size={18} /> {pending ? "Kaydediliyor…" : kind === "payment" ? "Ödemeyi kaydet" : payment === "account" ? "Cariye yaz" : "Gideri ekle"}
+        <Plus size={18} /> {pending ? "Kaydediliyor…" : kind === "payment" ? "Ödemeyi kaydet" : "Gideri ekle"}
       </Button>
     </form>
   );
