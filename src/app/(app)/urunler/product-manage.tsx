@@ -7,6 +7,7 @@ import { toast } from "@/components/toast";
 import { Button, Field, buttonClass, cx, inputClass } from "@/components/ui";
 import { createCategory, createProduct, deleteCategory, setProductActive, updateCategory, updateProduct } from "@/lib/actions";
 import { parseAmount } from "@/lib/format";
+import { COLOR_KEYS, CATEGORY_COLORS, categoryColor, type CategoryColor } from "@/lib/colors";
 import type { Category } from "./products-table";
 
 type Product = {
@@ -108,7 +109,10 @@ function ProductForm({ product, categories, onDone }: { product?: Product; categ
                 categoryId === c.id ? "brand-fill" : "bg-bg-deep text-ink-2 hover:text-ink",
               )}
             >
-              {c.name}
+              <span className="inline-flex items-center gap-1.5">
+                {categoryId !== c.id && <span className={cx("size-2 rounded-full", categoryColor(c.color).dot)} />}
+                {c.name}
+              </span>
             </button>
           ))}
         </div>
@@ -165,7 +169,7 @@ export function CategoriesButton({ categories }: { categories: Category[] }) {
               <CategoryRow key={c.id} category={c} />
             ))}
           </ul>
-          <NewCategory />
+          <NewCategory used={categories.map((c) => c.color)} />
         </div>
       </Sheet>
     </>
@@ -188,15 +192,44 @@ function BreadToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
   );
 }
 
+function ColorPicker({ value, onChange }: { value: string; onChange: (v: CategoryColor) => void }) {
+  return (
+    <div>
+      <p className="mb-1.5 text-[0.8rem] font-semibold text-ink-2">Renk</p>
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Tür rengi">
+        {COLOR_KEYS.map((k) => (
+          <button
+            key={k}
+            type="button"
+            role="radio"
+            aria-checked={value === k}
+            aria-label={CATEGORY_COLORS[k].label}
+            title={CATEGORY_COLORS[k].label}
+            onClick={() => onChange(k)}
+            className={cx(
+              "grid size-9 place-items-center rounded-full transition-transform duration-150",
+              CATEGORY_COLORS[k].dot,
+              value === k ? "scale-110 ring-2 ring-ink ring-offset-2 ring-offset-surface" : "hover:scale-105",
+            )}
+          >
+            {value === k && <Check size={15} strokeWidth={3} className="text-white" />}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CategoryRow({ category: c }: { category: Category }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(c.name);
   const [bread, setBread] = useState(c.is_bread);
+  const [color, setColor] = useState(c.color);
   const [pending, start] = useTransition();
 
   function save() {
     start(async () => {
-      const res = await updateCategory(c.id, { name, is_bread: bread });
+      const res = await updateCategory(c.id, { name, is_bread: bread, color });
       if (res.ok) {
         toast("Tür kaydedildi.");
         setEditing(false);
@@ -218,6 +251,7 @@ function CategoryRow({ category: c }: { category: Category }) {
       <li className="flex flex-col gap-3 rounded-2xl bg-bg-deep/60 p-3">
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} aria-label="Tür adı" className={inputClass} />
         <BreadToggle value={bread} onChange={setBread} />
+        <ColorPicker value={color} onChange={setColor} />
         <div className="grid grid-cols-2 gap-2">
           <Button type="button" onClick={() => setEditing(false)} disabled={pending}>
             <X size={16} /> Vazgeç
@@ -232,6 +266,7 @@ function CategoryRow({ category: c }: { category: Category }) {
 
   return (
     <li className={cx("flex min-h-14 items-center gap-3 rounded-2xl bg-bg-deep/60 px-3.5 py-2", pending && "opacity-50")}>
+      <span className={cx("size-3.5 shrink-0 rounded-full", categoryColor(c.color).dot)} aria-hidden />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{c.name}</span>
         <span className="text-[0.76rem] text-ink-3">
@@ -260,15 +295,16 @@ function CategoryRow({ category: c }: { category: Category }) {
   );
 }
 
-function NewCategory() {
+function NewCategory({ used }: { used: string[] }) {
   const [name, setName] = useState("");
   const [bread, setBread] = useState(false);
+  const [color, setColor] = useState<string>(COLOR_KEYS.find((k) => !used.includes(k)) ?? "emerald");
   const [pending, start] = useTransition();
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     start(async () => {
-      const res = await createCategory({ name, is_bread: bread });
+      const res = await createCategory({ name, is_bread: bread, color });
       if (res.ok) {
         toast("Tür eklendi.");
         setName("");
@@ -282,6 +318,7 @@ function NewCategory() {
       <p className="text-[0.85rem] font-semibold text-ink-2">Yeni tür</p>
       <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="Örn. Yufka" aria-label="Yeni tür adı" className={inputClass} />
       <BreadToggle value={bread} onChange={setBread} />
+      <ColorPicker value={color} onChange={setColor} />
       <Button type="submit" variant="primary" disabled={pending || !name.trim()}>
         <Plus size={18} /> {pending ? "Ekleniyor…" : "Türü ekle"}
       </Button>

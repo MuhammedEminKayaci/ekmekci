@@ -126,9 +126,7 @@ export function CounterView({
             </div>
             <ul className="tnum flex flex-col text-[0.94rem]">
               <li className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 border-b border-dashed border-line py-2.5">
-                <span className="flex min-w-0 items-center gap-2 font-semibold">
-                  <Wheat size={15} className="shrink-0 text-amber" /> Ekmek parası
-                </span>
+                <span className="min-w-0 font-semibold">Ekmek parası</span>
                 <span className="text-right text-ink-3">—</span>
                 <span className="min-w-[5.5rem] text-right font-semibold">{money(breadValue)}</span>
               </li>

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { DayNav } from "@/components/day-nav";
 import { PageHeader, Skeleton } from "@/components/ui";
 import { isISODate, todayTR, weekStart } from "@/lib/format";
+import { getSessionProfile } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { ExpensesView, type Expense } from "./expenses-view";
 
@@ -16,14 +17,16 @@ async function Expenses({ searchParams }: { searchParams: Search }) {
   const today = todayTR();
   const day = isISODate(sp.gun) ? sp.gun : today;
 
-  const [{ data: rows }, { data: drivers }, { data: settings }] = await Promise.all([
+  const [{ data: rows }, { data: drivers }, { data: types }, { data: settings }, profile] = await Promise.all([
     supabase
       .from("expenses")
       .select("id, place, driver_id, amount, category, description")
       .eq("entry_date", day)
       .order("created_at"),
     supabase.from("drivers").select("id, name, is_owner, is_active").order("sort_order"),
+    supabase.from("expense_categories").select("id, name").order("sort_order").order("name"),
     supabase.from("app_settings").select("lock_past_weeks").maybeSingle(),
+    getSessionProfile(),
   ]);
 
   const locked = (settings?.lock_past_weeks ?? true) && weekStart(day) < weekStart(today);
@@ -39,7 +42,9 @@ async function Expenses({ searchParams }: { searchParams: Search }) {
         key={day}
         day={day}
         expenses={(rows ?? []).map((r) => ({ ...r, amount: Number(r.amount) })) as Expense[]}
-        drivers={(drivers ?? []).map((d) => ({ id: d.id, name: d.is_owner ? "Ben" : d.name, is_active: d.is_active }))}
+        drivers={(drivers ?? []).map((d) => ({ id: d.id, name: d.name, is_active: d.is_active }))}
+        types={types ?? []}
+        isAdmin={profile?.isAdmin ?? false}
         locked={locked}
       />
     </>

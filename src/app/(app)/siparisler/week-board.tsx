@@ -185,7 +185,7 @@ export function WeekBoard({
         await downloadDayList(
           day,
           [...list.entries()].map(([id, c]) => ({ ...c, total: totals(id) })),
-          activeDriver ? (activeDriver.is_owner ? "Ben" : activeDriver.name) : undefined,
+          activeDriver ? activeDriver.name : undefined,
         );
         toast(`${weekdayLong(day)} listesi indirildi.`);
       } catch {
@@ -309,7 +309,7 @@ export function WeekBoard({
 
         {/* Dağıtıcı sekmeleri */}
         <div className="flex items-center gap-2 overflow-x-auto px-5 pb-4 sm:px-6" role="tablist" aria-label="Dağıtıcılar">
-          {[{ id: "all" as const, label: "Hepsi" }, ...tabDrivers.map((d) => ({ id: d.id, label: d.is_owner ? "Ben" : d.name }))].map(
+          {[{ id: "all" as const, label: "Hepsi" }, ...tabDrivers.map((d) => ({ id: d.id, label: d.name }))].map(
             (t) => {
               const count =
                 t.id === "all"
@@ -442,7 +442,7 @@ export function WeekBoard({
       <Sheet
         open={adding}
         onClose={() => setAdding(false)}
-        title={`${weekdayLong(day)} · ${activeDriver ? (activeDriver.is_owner ? "Benim listem" : `${activeDriver.name} listesi`) : ""}`}
+        title={`${weekdayLong(day)} · ${activeDriver ? `${activeDriver.name} listesi` : ""}`}
       >
         <AddCustomersForm
           day={day}

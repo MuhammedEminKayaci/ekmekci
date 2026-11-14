@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import { Package, Search } from "lucide-react";
 import { AnimatedNumber } from "@/components/animated-number";
 import { Empty, cx, inputClass, order } from "@/components/ui";
+import { categoryColor } from "@/lib/colors";
 import { money, qty } from "@/lib/format";
 import { ProductMenu } from "./product-manage";
 
 export type Sum = { qty: number; amount: number };
-export type Category = { id: number; name: string; is_bread: boolean; count: number };
+export type Category = { id: number; name: string; is_bread: boolean; color: string; count: number };
 export type ProductRow = {
   id: number;
   name: string;
@@ -99,7 +100,10 @@ export function ProductsTable({
                   cat === c.id ? "brand-fill" : "bg-bg-deep text-ink-2 hover:text-ink",
                 )}
               >
-                {c.name} <span className="opacity-60">{c.count}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  {"color" in c && cat !== c.id && <span className={cx("size-2 rounded-full", categoryColor(c.color).dot)} />}
+                  {c.name} <span className="opacity-60">{c.count}</span>
+                </span>
               </button>
             ))}
           </div>
@@ -220,12 +224,13 @@ function CategoryChip({ category }: { category: Category }) {
   return (
     <span
       className={cx(
-        "inline-flex max-w-full items-center truncate rounded-full px-2.5 py-0.5 text-[0.74rem] font-semibold",
-        category.is_bread ? "bg-amber-soft text-amber" : "bg-sky-soft text-sky",
+        "inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.74rem] leading-none font-semibold ring-1",
+        categoryColor(category.color).chip,
       )}
-      title={category.is_bread ? "Ekmek türü" : undefined}
+      title={category.is_bread ? "Ekmek türü: tezgahta ek ürün olarak çıkmaz" : undefined}
     >
-      {category.name}
+      <span className={cx("size-1.5 shrink-0 rounded-full", categoryColor(category.color).dot)} />
+      <span className="truncate">{category.name}</span>
     </span>
   );
 }

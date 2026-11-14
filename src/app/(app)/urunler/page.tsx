@@ -20,7 +20,7 @@ async function Products() {
   const from = week < month ? week : month;
 
   const [{ data: categories }, { data: products }, { data: route }, { data: counter }, profile] = await Promise.all([
-    supabase.from("product_categories").select("id, name, is_bread, sort_order").order("sort_order").order("id"),
+    supabase.from("product_categories").select("id, name, is_bread, color, sort_order").order("sort_order").order("id"),
     supabase
       .from("products")
       .select("id, name, unit, suggested_price, is_active, sort_order, category_id")
@@ -104,6 +104,7 @@ async function Products() {
     id: c.id,
     name: c.name,
     is_bread: c.is_bread,
+    color: c.color,
     count: rows.filter((r) => r.category_id === c.id).length,
   }));
 

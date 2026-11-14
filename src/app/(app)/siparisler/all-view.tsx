@@ -85,7 +85,7 @@ export function AllView({
             className="neu-sm lift animate-rise flex flex-col gap-2 rounded-2xl p-4 text-left"
           >
             <span className="flex items-center gap-2 font-semibold">
-              <Truck size={16} className="text-sky" /> {s.driver.is_owner ? "Ben" : s.driver.name}
+              <Truck size={16} className="text-sky" /> {s.driver.name}
               <span className="ml-auto text-[0.78rem] font-medium text-ink-3">{s.customers} müşteri</span>
             </span>
             <span className="tnum grid grid-cols-3 gap-2 text-[0.85rem]">

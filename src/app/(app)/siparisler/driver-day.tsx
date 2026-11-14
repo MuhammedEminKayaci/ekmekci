@@ -90,7 +90,7 @@ export function DriverDay({
     });
   }
 
-  const title = driver.is_owner ? "Benim gün sonum" : `${driver.name} — gün sonu`;
+  const title = `${driver.name} — gün sonu`;
 
   return (
     <section className="m-3 mt-4 rounded-2xl border border-edge p-4 sm:m-4 sm:p-5 xl:m-6">

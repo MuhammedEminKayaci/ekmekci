@@ -392,6 +392,30 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_categories: {
+        Row: {
+          created_at: string
+          id: number
+          name: string
+          name_key: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          name: string
+          name_key?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          name?: string
+          name_key?: string | null
+          sort_order?: number
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
@@ -604,6 +628,7 @@ export type Database = {
       }
       product_categories: {
         Row: {
+          color: string
           created_at: string
           id: number
           is_bread: boolean
@@ -612,6 +637,7 @@ export type Database = {
           sort_order: number
         }
         Insert: {
+          color?: string
           created_at?: string
           id?: never
           is_bread?: boolean
@@ -620,6 +646,7 @@ export type Database = {
           sort_order?: number
         }
         Update: {
+          color?: string
           created_at?: string
           id?: never
           is_bread?: boolean

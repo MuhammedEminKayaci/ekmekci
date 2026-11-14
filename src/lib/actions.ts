@@ -34,6 +34,9 @@ function friendly(err: PgError): string {
   if (err.code === "23503" && err.message.includes("products_category_id_fkey")) {
     return "Bu türde ürünler var; önce ürünleri başka türe taşıyın.";
   }
+  if (err.code === "23505" && err.message.includes("expense_categories_name_unique")) {
+    return "Bu gider türü zaten var.";
+  }
   if (err.code === "23505" && err.message.includes("order_lines_order_product")) {
     return "Bu ürün bu müşterinin satırında zaten var.";
   }
@@ -273,14 +276,16 @@ export async function setProductActive(id: number, active: boolean): Promise<Act
 
 // --- Ürün türleri (yalnızca yönetici) -------------------------------------------
 
-export type CategoryInput = { name: string; is_bread: boolean };
+export type CategoryInput = { name: string; is_bread: boolean; color: string };
+
+const COLORS = new Set(["amber", "emerald", "sky", "violet", "rose", "orange", "teal", "indigo", "lime", "fuchsia"]);
 
 function readCategory(input: unknown): CategoryInput | null {
   if (typeof input !== "object" || input === null) return null;
-  const { name, is_bread } = input as CategoryInput;
+  const { name, is_bread, color } = input as CategoryInput;
   const n = text(name, 40);
-  if (!n || typeof is_bread !== "boolean") return null;
-  return { name: n, is_bread };
+  if (!n || typeof is_bread !== "boolean" || typeof color !== "string" || !COLORS.has(color)) return null;
+  return { name: n, is_bread, color };
 }
 
 export async function createCategory(input: CategoryInput): Promise<ActionResult> {
@@ -627,6 +632,32 @@ export async function addExpense(input: ExpenseInput): Promise<ActionResult<Save
 
   refresh();
   return { ok: true, data: data as SavedExpense };
+}
+
+/** Yeni gider türü (her aktif kullanıcı ekleyebilir). */
+export async function createExpenseCategory(name: string): Promise<ActionResult<string>> {
+  const n = text(name, 40);
+  if (!n) return { ok: false, error: "Gider türünü yazın (en çok 40 karakter)." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("expense_categories").insert({ name: n, sort_order: 50 });
+  if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true, data: n };
+}
+
+/** Gider türünü listeden kaldırır (yönetici). Eski giderlerdeki tür yazısı kalır. */
+export async function deleteExpenseCategory(id: number): Promise<ActionResult> {
+  if (!isId(id)) return BAD_INPUT;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("expense_categories").delete().eq("id", id).select("id");
+  if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
+
+  refresh();
+  return { ok: true };
 }
 
 export async function deleteExpense(id: number): Promise<ActionResult> {
