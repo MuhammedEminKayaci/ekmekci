@@ -39,6 +39,7 @@ export function CustomerForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const editing = Boolean(initial?.id);
+  const wide = !editing;
 
   function submit(formData: FormData) {
     formData.set("type", String(type));
@@ -66,6 +67,8 @@ export function CustomerForm({
 
   return (
     <form action={submit} className="flex flex-col gap-4">
+      <div className={cx("flex flex-col gap-4", wide && "sm:grid sm:grid-cols-2 sm:items-start sm:gap-6")}>
+        <div className="flex flex-col gap-4">
       <fieldset className="flex flex-col gap-1.5">
         <legend className="mb-1.5 text-[0.8rem] font-semibold text-ink-2">Müşteri türü</legend>
         <div className="neu-inset grid grid-cols-2 rounded-full p-1.5">
@@ -123,14 +126,38 @@ export function CustomerForm({
         </span>
       </button>
 
-      {!editing && buys && (
-        <fieldset className="flex flex-col gap-2">
+      <Field label="Adres (isteğe bağlı)">
+        <textarea
+          name="address"
+          rows={2}
+          maxLength={500}
+          defaultValue={initial?.address ?? ""}
+          className={cx(inputClass, "resize-none py-2.5")}
+        />
+      </Field>
+
+      <Field label="Not (isteğe bağlı)">
+        <textarea
+          name="note"
+          rows={2}
+          maxLength={1000}
+          defaultValue={initial?.note ?? ""}
+          className={cx(inputClass, "resize-none py-2.5")}
+        />
+      </Field>
+
+        </div>
+
+      {!editing && (
+        buys ? (
+        <fieldset className="flex min-h-0 flex-col gap-2">
           <legend className="mb-1.5 text-[0.85rem] font-semibold text-ink-2">Aldığı ürünler ve fiyatları</legend>
           {catalog.length === 0 && <p className="text-[0.85rem] text-ink-3">Önce Ürünler sayfasından ürün ekleyin.</p>}
+          <div className="scroll-soft -mx-1 flex max-h-[min(24rem,45dvh)] flex-col gap-2 overflow-y-auto px-1 py-0.5">
           {catalog.map((p) => {
             const on = p.id in picked;
             return (
-              <div key={p.id} className={cx("flex items-center gap-3 rounded-2xl p-2 pl-3", on ? "bg-brand-soft ring-1 ring-brand/40" : "neu-sm")}>
+              <div key={p.id} className={cx("flex items-center gap-3 rounded-2xl p-1.5 pl-3", on ? "bg-brand-soft ring-1 ring-brand/40" : "neu-sm")}>
                 <button
                   type="button"
                   aria-pressed={on}
@@ -142,7 +169,7 @@ export function CustomerForm({
                       return next;
                     })
                   }
-                  className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 text-left font-semibold"
+                  className="flex min-h-10 min-w-0 flex-1 items-center gap-2.5 text-left font-semibold"
                 >
                   <span className={cx("grid size-6 shrink-0 place-items-center rounded-full", on ? "brand-fill" : "neu-inset")}>
                     {on && <Check size={14} strokeWidth={3} />}
@@ -163,29 +190,17 @@ export function CustomerForm({
               </div>
             );
           })}
+          </div>
           <span className="text-[0.8rem] text-ink-3">Fiyatlar bu müşteriye özeldir; sonradan müşteri kartından değiştirilebilir.</span>
         </fieldset>
+        ) : (
+          <div className="flex min-h-40 flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-edge-strong p-6 text-center">
+            <p className="font-semibold">Ürün almaz</p>
+            <p className="max-w-[30ch] text-[0.84rem] text-ink-3">Yalnızca cari hesap (ör. oduncu). Siparişler&apos;de görünmez; Giderler&apos;de seçilir.</p>
+          </div>
+        )
       )}
-
-      <Field label="Adres (isteğe bağlı)">
-        <textarea
-          name="address"
-          rows={2}
-          maxLength={500}
-          defaultValue={initial?.address ?? ""}
-          className={cx(inputClass, "resize-none py-2.5")}
-        />
-      </Field>
-
-      <Field label="Not (isteğe bağlı)">
-        <textarea
-          name="note"
-          rows={2}
-          maxLength={1000}
-          defaultValue={initial?.note ?? ""}
-          className={cx(inputClass, "resize-none py-2.5")}
-        />
-      </Field>
+      </div>
 
       {error && (
         <p role="alert" className="rounded-control bg-debt-soft px-3.5 py-2.5 text-[0.88rem] font-medium text-debt">

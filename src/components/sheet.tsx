@@ -9,11 +9,14 @@ export function Sheet({
   onClose,
   title,
   children,
+  size = "md",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  /** lg: geniş form (iki sütun) için. */
+  size?: "md" | "lg";
 }) {
   const ref = useRef<HTMLDialogElement>(null);
 
@@ -31,7 +34,7 @@ export function Sheet({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-hidden rounded-t-[2rem] bg-surface p-0 text-ink shadow-[0_-20px_60px_-20px_rgba(8,40,22,0.35)] sm:m-auto sm:max-w-lg sm:rounded-[2rem]"
+      className={`m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-hidden rounded-t-[2rem] bg-surface p-0 text-ink shadow-[0_-20px_60px_-20px_rgba(8,40,22,0.35)] sm:m-auto sm:rounded-[2rem] ${size === "lg" ? "sm:max-w-[min(56rem,calc(100vw-3rem))]" : "sm:max-w-lg"}`}
     >
       <div className="flex max-h-[92dvh] flex-col">
         <span className="mx-auto mt-2.5 h-1.5 w-11 rounded-full bg-ink-3/30 sm:hidden" aria-hidden />

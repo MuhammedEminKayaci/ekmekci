@@ -206,7 +206,7 @@ export function CustomerList({
         )}
       </section>
 
-      <Sheet open={creating} onClose={closeCreate} title="Yeni müşteri">
+      <Sheet open={creating} onClose={closeCreate} title="Yeni müşteri" size="lg">
         <CustomerForm catalog={catalog} onDone={closeCreate} />
       </Sheet>
     </>
