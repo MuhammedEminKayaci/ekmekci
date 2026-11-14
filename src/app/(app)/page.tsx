@@ -8,8 +8,11 @@ import {
   ClipboardList,
   HandCoins,
   TrendingUp,
+  Store,
   UserPlus,
   Wallet,
+  Wheat,
+  type LucideIcon,
 } from "lucide-react";
 import { AnimatedNumber } from "@/components/animated-number";
 import { Delta, Gauge, Sparkline } from "@/components/charts";
@@ -77,16 +80,26 @@ async function Dashboard() {
   const month = monthStart(today);
   const from14 = addDays(today, -13);
 
-  const [{ data: daily }, { data: weeks }, { data: monthRows }, { data: balances }] = await Promise.all([
+  const [{ data: daily }, { data: weeks }, { data: monthRows }, { data: balances }, { data: counterDay }, { data: counterSales }] = await Promise.all([
     supabase.rpc("get_totals", { p_from: from14 < lastWeek ? from14 : lastWeek, p_to: today, p_group: "day" }),
     supabase.rpc("get_totals", { p_from: firstWeek, p_to: addDays(thisWeek, 6), p_group: "week" }),
     supabase.rpc("get_totals", { p_from: month, p_to: today, p_group: "month" }),
     supabase.from("customer_overview").select("id, name, balance, last_entry_date").eq("is_active", true).neq("balance", 0),
+    supabase.from("counter_days").select("sales_income").eq("entry_date", today).maybeSingle(),
+    supabase.from("counter_sales").select("amount").eq("entry_date", today),
   ]);
 
   const dayMap = new Map((daily ?? []).map((r) => [r.period_start, r as Totals]));
   const t = dayMap.get(today);
   const sameDayLastWeek = dayMap.get(addDays(today, -7));
+
+  // Bugün: dağıtım + tezgah.
+  const counterBread = Number(counterDay?.sales_income ?? 0);
+  const counterItems = (counterSales ?? []).reduce((a, x) => a + Number(x.amount), 0);
+  const counterTotal = counterBread + counterItems;
+  const breadsSold = Number(t?.delivered_qty ?? 0) - Number(t?.returned_qty ?? 0);
+  const routeSales = Number(t?.net_amount ?? 0);
+  const turnover = routeSales + counterTotal;
 
   // Bu hafta ve geçen haftanın aynı dönemi (pazartesiden bugünün gününe kadar).
   const wk = sumRange(dayMap, thisWeek, today);
@@ -142,6 +155,38 @@ async function Dashboard() {
           </ButtonLink>
         </div>
       </header>
+
+      {/* ── Bugün özet: ekmek, ciro, tezgah ───────────────────── */}
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:mb-5 sm:grid-cols-3 sm:gap-5">
+        <TodayCard
+          i={1}
+          icon={Wheat}
+          tone="amber"
+          label="Bugün satılan ekmek"
+          value={<AnimatedNumber value={breadsSold} format="qty" />}
+          unit="adet"
+          hint={`${qty(Number(t?.delivered_qty ?? 0))} verildi · ${qty(Number(t?.returned_qty ?? 0))} iade`}
+          href="/siparisler"
+        />
+        <TodayCard
+          i={2}
+          icon={TrendingUp}
+          tone="brand"
+          label="Bugün toplam ciro"
+          value={<AnimatedNumber value={turnover} />}
+          hint={`Dağıtım ${money(routeSales)} + tezgah ${money(counterTotal)}`}
+          strong
+        />
+        <TodayCard
+          i={3}
+          icon={Store}
+          tone="sky"
+          label="Bugün tezgah toplamı"
+          value={<AnimatedNumber value={counterTotal} />}
+          hint={`Ekmek ${money(counterBread)} · ek ürün ${money(counterItems)}`}
+          href="/tezgah"
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-12">
         {/* ── Bugün ─────────────────────────────────────────────── */}
@@ -413,5 +458,50 @@ export default function HomePage() {
     <Suspense fallback={<DashboardSkeleton />}>
       <Dashboard />
     </Suspense>
+  );
+}
+
+function TodayCard({
+  i,
+  icon,
+  tone,
+  label,
+  value,
+  unit,
+  hint,
+  href,
+  strong,
+}: {
+  i: number;
+  icon: LucideIcon;
+  tone: "brand" | "amber" | "sky";
+  label: string;
+  value: React.ReactNode;
+  unit?: string;
+  hint: string;
+  href?: string;
+  strong?: boolean;
+}) {
+  const body = (
+    <>
+      <span className="flex items-center gap-2.5 text-[0.88rem] font-semibold text-ink-2">
+        <IconChip icon={icon} tone={tone} size="sm" /> {label}
+      </span>
+      <span className={cx("mt-3 block font-display tnum leading-none font-semibold tracking-[-0.02em]", strong ? "text-[2.3rem] text-brand-deep dark:text-brand sm:text-[2.5rem]" : "text-[2.1rem] sm:text-[2.3rem]")}>
+        {value}
+        {unit && <span className="ml-1.5 font-sans text-[0.9rem] font-semibold text-ink-3">{unit}</span>}
+      </span>
+      <span className="tnum mt-2 block truncate text-[0.8rem] text-ink-3">{hint}</span>
+    </>
+  );
+  const cls = cx("neu animate-rise block rounded-tile p-5", strong && "ring-2 ring-brand/35", href && "lift");
+  return href ? (
+    <Link href={href} style={order(i)} className={cls}>
+      {body}
+    </Link>
+  ) : (
+    <div style={order(i)} className={cls}>
+      {body}
+    </div>
   );
 }

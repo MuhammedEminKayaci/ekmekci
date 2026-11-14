@@ -521,7 +521,7 @@ export async function setDriverActive(id: number, active: boolean): Promise<Acti
 
 export type ExpenseInput = {
   date: string;
-  place: "driver" | "counter";
+  place: "driver" | "counter" | "general";
   driverId: number | null;
   amount: number;
   category: string | null;
@@ -538,7 +538,7 @@ export type SavedExpense = {
 export async function addExpense(input: ExpenseInput): Promise<ActionResult<SavedExpense>> {
   if (typeof input !== "object" || input === null) return BAD_INPUT;
   if (!isISODate(input.date)) return { ok: false, error: "Geçersiz tarih." };
-  if (input.place !== "driver" && input.place !== "counter") return BAD_INPUT;
+  if (input.place !== "driver" && input.place !== "counter" && input.place !== "general") return BAD_INPUT;
   if (input.place === "driver" && !isId(input.driverId)) return { ok: false, error: "Dağıtıcı seçin." };
   const amount = moneyValue(input.amount);
   if (amount == null || amount <= 0) return { ok: false, error: "Gider tutarı girin." };
@@ -599,63 +599,52 @@ export async function saveDriverHandover(
 
 // --- Tezgah --------------------------------------------------------------------
 
-export type CounterPatch = {
-  opening_cash: number;
-  breads_in: number;
-  breads_left: number;
-  bread_price: number | null;
-  sales_income: number;
-  closing_cash: number;
-  handed_over: number | null;
-  note: string | null;
-};
-
-export async function saveCounterDay(date: string, patch: CounterPatch): Promise<ActionResult> {
-  if (!isISODate(date) || typeof patch !== "object" || patch === null) return BAD_INPUT;
-  const opening = moneyValue(patch.opening_cash);
-  const sales = moneyValue(patch.sales_income);
-  const closing = moneyValue(patch.closing_cash);
-  const breadsIn = qtyValue(patch.breads_in);
-  const breadsLeft = qtyValue(patch.breads_left);
-  const price = patch.bread_price == null ? null : moneyValue(patch.bread_price, 99_999);
-  const handed = patch.handed_over == null ? null : moneyValue(patch.handed_over);
-  const note = text(patch.note, 500);
-  if (
-    opening == null || sales == null || closing == null || breadsIn == null || breadsLeft == null ||
-    (patch.bread_price != null && price == null) || (patch.handed_over != null && handed == null) || note === undefined
-  ) {
-    return { ok: false, error: "Girilen değer izin verilen aralığın dışında." };
-  }
+/** Tezgahtan gelen ekmek parası (ekmek çeşidi fark etmez). */
+export async function saveCounterBread(date: string, amount: number): Promise<ActionResult> {
+  if (!isISODate(date)) return BAD_INPUT;
+  const value = moneyValue(amount);
+  if (value == null) return { ok: false, error: "Tutar izin verilen aralığın dışında." };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("counter_days").upsert(
-    {
-      entry_date: date,
-      opening_cash: opening,
-      breads_in: breadsIn,
-      breads_left: breadsLeft,
-      bread_price: price && price > 0 ? price : null,
-      sales_income: sales,
-      closing_cash: closing,
-      handed_over: handed,
-      note,
-    },
-    { onConflict: "entry_date" },
-  );
+  const { error } = await supabase
+    .from("counter_days")
+    .upsert({ entry_date: date, sales_income: value }, { onConflict: "entry_date" });
   if (error) return { ok: false, error: friendly(error) };
 
+  refresh();
   return { ok: true };
 }
 
-/** Tezgahın varsayılan ekmek fiyatı (yalnızca yönetici). */
-export async function setCounterDefaultPrice(price: number): Promise<ActionResult> {
-  const value = moneyValue(price, 99_999);
-  if (value == null || value <= 0) return { ok: false, error: "Geçerli bir fiyat girin." };
+export type CounterSaleInput = { date: string; name: string; qty: number; unitPrice: number };
+
+/** Tezgahta satılan ek ürün (zeytinyağı, yufka …). */
+export async function addCounterSale(input: CounterSaleInput): Promise<ActionResult> {
+  if (typeof input !== "object" || input === null || !isISODate(input.date)) return BAD_INPUT;
+  const name = text(input.name, 60);
+  if (!name) return { ok: false, error: "Ürün adını yazın." };
+  const qtyNum = typeof input.qty === "number" && Number.isFinite(input.qty) ? Math.round(input.qty * 100) / 100 : NaN;
+  if (!(qtyNum > 0 && qtyNum < 100_000)) return { ok: false, error: "Adet girin." };
+  const price = moneyValue(input.unitPrice, 999_999);
+  if (price == null) return { ok: false, error: "Fiyat girin." };
 
   const supabase = await createClient();
-  const { data, error } = await supabase.from("app_settings").update({ counter_bread_price: value }).eq("id", true).select("id");
+  const { error } = await supabase
+    .from("counter_sales")
+    .insert({ entry_date: input.date, name, qty: qtyNum, unit_price: price });
+  if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true };
+}
+
+export async function deleteCounterSale(id: number): Promise<ActionResult> {
+  if (!isId(id)) return BAD_INPUT;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("counter_sales").delete().eq("id", id).select("id");
   if (error) return { ok: false, error: friendly(error) };
   if (!data?.length) return NO_PERMISSION;
 
+  refresh();
   return { ok: true };
 }

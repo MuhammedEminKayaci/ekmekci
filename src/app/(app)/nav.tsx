@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChartColumn, ClipboardList, LayoutGrid, Package, Store, Users } from "lucide-react";
+import { ChartColumn, ClipboardList, LayoutGrid, Package, ReceiptText, Store, Users } from "lucide-react";
 import { cx } from "@/components/ui";
 
 const ITEMS = [
-  { href: "/", label: "Ana sayfa", hint: "Günün özeti", icon: LayoutGrid },
-  { href: "/siparisler", label: "Siparişler", hint: "Ekmek ve tahsilat gir", icon: ClipboardList },
-  { href: "/tezgah", label: "Tezgah", hint: "Kasa ve gün sonu", icon: Store },
-  { href: "/musteriler", label: "Müşteriler", hint: "Kartlar ve bakiyeler", icon: Users },
-  { href: "/urunler", label: "Ürünler", hint: "Gün, hafta, ay satışları", icon: Package },
-  { href: "/rapor", label: "Hafta raporu", hint: "Haftalık toplamlar", icon: ChartColumn },
+  { href: "/", label: "Ana sayfa", short: "Özet", hint: "Günün özeti", icon: LayoutGrid },
+  { href: "/siparisler", label: "Siparişler", short: "Sipariş", hint: "Ekmek ve tahsilat gir", icon: ClipboardList },
+  { href: "/tezgah", label: "Tezgah", short: "Tezgah", hint: "Ekmek parası ve ek ürünler", icon: Store },
+  { href: "/giderler", label: "Giderler", short: "Gider", hint: "Günlük giderler", icon: ReceiptText },
+  { href: "/musteriler", label: "Müşteriler", short: "Müşteri", hint: "Kartlar ve bakiyeler", icon: Users },
+  { href: "/urunler", label: "Ürünler", short: "Ürün", hint: "Gün, hafta, ay satışları", icon: Package },
+  { href: "/rapor", label: "Hafta raporu", short: "Rapor", hint: "Haftalık toplamlar", icon: ChartColumn },
 ] as const;
 
 type IsActive = (href: string) => boolean;
@@ -84,8 +85,8 @@ function TabBarView({ isActive }: { isActive: IsActive }) {
       aria-label="Ana menü"
       className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden"
     >
-      <div className="neu mx-auto grid max-w-xl grid-cols-6 gap-0.5 rounded-[1.5rem] p-1.5">
-        {ITEMS.map(({ href, label, icon: Icon }) => {
+      <div className="neu mx-auto grid max-w-2xl grid-cols-7 gap-0.5 rounded-[1.5rem] p-1.5">
+        {ITEMS.map(({ href, short, icon: Icon }) => {
           const active = isActive(href);
           return (
             <Link
@@ -93,12 +94,12 @@ function TabBarView({ isActive }: { isActive: IsActive }) {
               href={href}
               aria-current={active ? "page" : undefined}
               className={cx(
-                "flex min-h-[3.75rem] min-w-0 flex-col items-center justify-center gap-1 rounded-[1.1rem] text-[0.62rem] font-semibold xs:text-[0.68rem] transition-all duration-300 ease-out",
+                "flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-1 rounded-[1rem] text-[0.58rem] font-semibold xs:text-[0.64rem] transition-all duration-300 ease-out",
                 active ? "brand-fill" : "text-ink-2 active:scale-95",
               )}
             >
-              <Icon size={21} strokeWidth={2.1} />
-              <span className="max-w-full truncate px-1">{label === "Hafta raporu" ? "Rapor" : label}</span>
+              <Icon size={19} strokeWidth={2.1} />
+              <span className="max-w-full truncate px-1">{short}</span>
             </Link>
           );
         })}

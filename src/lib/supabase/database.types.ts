@@ -121,6 +121,50 @@ export type Database = {
           },
         ]
       }
+      counter_sales: {
+        Row: {
+          amount: number | null
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          id: number
+          name: string
+          qty: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          entry_date: string
+          id?: never
+          name: string
+          qty: number
+          unit_price: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: never
+          name?: string
+          qty?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counter_sales_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_prices: {
         Row: {
           created_at: string

@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
-import { CalendarCheck, ChevronLeft, ChevronRight } from "lucide-react";
-import { PageHeader, Skeleton, buttonClass } from "@/components/ui";
-import { addDays, isISODate, longDate, todayTR, weekStart, weekdayLong } from "@/lib/format";
-import { getSessionProfile } from "@/lib/session";
+import { DayNav } from "@/components/day-nav";
+import { PageHeader, Skeleton } from "@/components/ui";
+import { addDays, isISODate, todayTR, weekStart } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import type { DayExpense } from "../siparisler/driver-day";
-import { CounterForm, type CounterDay } from "./counter-form";
+import { CounterView } from "./counter-view";
 
 export const metadata: Metadata = { title: "Tezgah" };
 
@@ -18,68 +15,44 @@ async function Counter({ searchParams }: { searchParams: Search }) {
   const supabase = await createClient();
   const today = todayTR();
   const day = isISODate(sp.gun) ? sp.gun : today;
-  const profile = await getSessionProfile();
 
-  const [{ data: row }, { data: expenses }, { data: settings }] = await Promise.all([
-    supabase.from("counter_days").select("*").eq("entry_date", day).maybeSingle(),
+  const [{ data: row }, { data: sales }, { data: recent }, { data: products }, { data: settings }] = await Promise.all([
+    supabase.from("counter_days").select("sales_income").eq("entry_date", day).maybeSingle(),
+    supabase.from("counter_sales").select("id, name, qty, unit_price, amount").eq("entry_date", day).order("created_at"),
     supabase
-      .from("expenses")
-      .select("id, entry_date, driver_id, amount, category, description")
-      .eq("place", "counter")
-      .eq("entry_date", day)
-      .order("created_at"),
-    supabase.from("app_settings").select("lock_past_weeks, counter_bread_price").maybeSingle(),
+      .from("counter_sales")
+      .select("name, unit_price")
+      .gte("entry_date", addDays(today, -120))
+      .order("entry_date", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(400),
+    supabase.from("products").select("name, suggested_price").eq("is_active", true).order("sort_order"),
+    supabase.from("app_settings").select("lock_past_weeks").maybeSingle(),
   ]);
 
   const locked = (settings?.lock_past_weeks ?? true) && weekStart(day) < weekStart(today);
-  const defaultPrice = settings?.counter_bread_price == null ? null : Number(settings.counter_bread_price);
 
-  const initial: CounterDay = {
-    opening_cash: Number(row?.opening_cash ?? 0),
-    breads_in: Number(row?.breads_in ?? 0),
-    breads_left: Number(row?.breads_left ?? 0),
-    bread_price: row?.bread_price == null ? defaultPrice : Number(row.bread_price),
-    sales_income: Number(row?.sales_income ?? 0),
-    closing_cash: Number(row?.closing_cash ?? 0),
-    handed_over: row?.handed_over == null ? null : Number(row.handed_over),
-    note: row?.note ?? null,
-  };
-
-  const nav = (d: string) => `/tezgah?gun=${d}`;
+  // Hızlı seçim: son satılan ek ürünler (son fiyatıyla), sonra katalogdaki ürünler.
+  const picks = new Map<string, number | null>();
+  for (const r of recent ?? []) if (!picks.has(r.name)) picks.set(r.name, Number(r.unit_price));
+  for (const p of products ?? []) if (!picks.has(p.name)) picks.set(p.name, p.suggested_price == null ? null : Number(p.suggested_price));
 
   return (
     <>
       <PageHeader
         title="Tezgah"
-        description="Sabah kasayı ve tezgaha konan ekmeği, akşam kalan ekmeği, gelen parayı ve kasada bırakılanı yazın. Hesap kendiliğinden çıkar."
+        description="Tezgahtan gelen ekmek parasını ve satılan ek ürünleri (zeytinyağı, yufka …) yazın; günün tezgah toplamı kendiliğinden çıkar. Giderler artık Giderler sayfasında."
         actions={
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
-            <Link href={nav(addDays(day, -1))} className={buttonClass("soft", "w-12 px-0")} aria-label="Önceki gün" scroll={false}>
-              <ChevronLeft size={22} strokeWidth={2.4} />
-            </Link>
-            <div className="neu-inset flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center rounded-control px-4 text-center sm:min-w-60 sm:flex-none">
-              <span className="text-[0.92rem] font-semibold whitespace-nowrap">{longDate(day)}</span>
-              <span className="text-[0.72rem] font-semibold text-ink-3">{day === today ? "Bugün" : weekdayLong(day)}</span>
-            </div>
-            <Link href={nav(addDays(day, 1))} className={buttonClass("soft", "w-12 px-0")} aria-label="Sonraki gün" scroll={false}>
-              <ChevronRight size={22} strokeWidth={2.4} />
-            </Link>
-            {day !== today && (
-              <Link href="/tezgah" className={buttonClass("primary", "w-full whitespace-nowrap sm:w-auto")} scroll={false}>
-                <CalendarCheck size={17} /> Bugüne dön
-              </Link>
-            )}
-          </div>
+          <DayNav base="/tezgah" day={day} today={today} />
         }
       />
-      <CounterForm
+      <CounterView
         key={day}
         day={day}
-        initial={initial}
-        defaultPrice={defaultPrice}
-        expenses={(expenses ?? []) as DayExpense[]}
+        bread={Number(row?.sales_income ?? 0)}
+        sales={(sales ?? []).map((r) => ({ ...r, qty: Number(r.qty), unit_price: Number(r.unit_price), amount: Number(r.amount) }))}
+        picks={[...picks].slice(0, 12).map(([name, price]) => ({ name, price }))}
         locked={locked}
-        isAdmin={profile?.isAdmin ?? false}
       />
     </>
   );
