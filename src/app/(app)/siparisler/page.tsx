@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader, Skeleton, WeekNav } from "@/components/ui";
 import { addDays, isISODate, todayTR, weekDays, weekStart } from "@/lib/format";
+import { getSessionProfile } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import type { DayExpense } from "./driver-day";
 import { WeekBoard, type BoardCustomer, type BoardDriver, type BoardRow } from "./week-board";
@@ -20,6 +21,7 @@ async function Board({ searchParams }: { searchParams: Search }) {
   const day = isISODate(sp.gun) && days.includes(sp.gun) ? sp.gun : days.includes(today) ? today : start;
 
   const end = addDays(start, 6);
+  const profile = await getSessionProfile();
   const [{ data: rows }, { data: customers }, { data: settings }, { data: drivers }, { data: expenses }, { data: driverDays }] = await Promise.all([
     supabase.rpc("get_week_board", { p_date: start }),
     supabase
@@ -63,6 +65,7 @@ async function Board({ searchParams }: { searchParams: Search }) {
         rows={(rows ?? []) as BoardRow[]}
         customers={all.filter((c) => c.is_active) as BoardCustomer[]}
         balances={balances}
+        isAdmin={profile?.isAdmin ?? false}
         drivers={(drivers ?? []) as BoardDriver[]}
         expenses={(expenses ?? []) as DayExpense[]}
         driverDays={(driverDays ?? []).map((d) => ({ ...d, handed_over: d.handed_over == null ? null : Number(d.handed_over) }))}

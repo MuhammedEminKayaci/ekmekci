@@ -1,5 +1,10 @@
 "use server";
 
+// Bütün işlemler kullanıcının oturumuyla çalışır; asıl yetki kontrolü veri tabanındaki
+// satır kurallarıdır (RLS). Buradaki kontroller girdiyi temizler ve anlaşılır hata verir.
+// Server Action'lar dışarıdan doğrudan çağrılabildiği için TypeScript tiplerine güvenilmez:
+// her parametre çalışma anında doğrulanır.
+
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -8,6 +13,10 @@ import { addDays, isISODate, parseAmount } from "@/lib/format";
 export type ActionResult<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
 type PgError = { code?: string; message: string; details?: string | null };
+
+const BAD_INPUT = { ok: false, error: "Geçersiz istek." } as const;
+const NO_PERMISSION = { ok: false, error: "Bu işlem için yetkiniz yok." } as const;
+const MAX_MONEY = 9_999_999;
 
 function friendly(err: PgError): string {
   if (err.code === "23505" && err.message.includes("customers_name_unique")) {
@@ -20,26 +29,46 @@ function friendly(err: PgError): string {
     return "Bu müşteri o gün bu dağıtıcının listesinde zaten var.";
   }
   if (err.code === "23514") return "Girilen değer izin verilen aralığın dışında.";
-  if (err.code === "42501") return "Bu işlem için yetkiniz yok.";
+  if (err.code === "42501") return NO_PERMISSION.error;
+  // Yalnızca kendi tetikleyicilerimizin Türkçe mesajları gösterilir.
   if (err.code === "P0001") return err.message;
   return "İşlem tamamlanamadı. Bağlantınızı kontrol edip tekrar deneyin.";
 }
 
-// --- Oturum ------------------------------------------------------------------
+// --- Girdi doğrulama ---------------------------------------------------------
 
-export type LoginState = { error?: string; email?: string };
+const isId = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v > 0;
 
-export async function signIn(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  if (!email || !password) return { error: "E-posta ve şifre gerekli.", email };
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: "E-posta veya şifre hatalı.", email };
-
-  redirect("/");
+function idList(v: unknown, max = 500): number[] | null {
+  if (!Array.isArray(v) || v.length > max) return null;
+  return v.every(isId) ? [...new Set(v as number[])] : null;
 }
+
+/** Sayı ya da sayı metni → 0..max aralığında, kuruşa yuvarlanmış tutar. */
+function moneyValue(v: unknown, max = MAX_MONEY): number | null {
+  const n = typeof v === "number" ? v : typeof v === "string" ? parseAmount(v) : null;
+  if (n == null || !Number.isFinite(n) || n < 0 || n > max) return null;
+  return Math.round(n * 100) / 100;
+}
+
+function qtyValue(v: unknown): number | null {
+  const n = typeof v === "number" ? v : NaN;
+  if (!Number.isFinite(n) || n < 0 || n > 100000) return null;
+  return Math.trunc(n);
+}
+
+/** Metni kırpar; uzunluk sınırını aşarsa ya da metin değilse null. */
+function text(v: unknown, max: number): string | null | undefined {
+  if (v == null) return null;
+  if (typeof v !== "string") return undefined;
+  const s = v.trim().replace(/\s+/g, " ");
+  if (s.length > max) return undefined;
+  return s || null;
+}
+
+// --- Oturum ------------------------------------------------------------------
+// Giriş tarayıcıdan doğrudan Supabase'e yapılır (src/app/giris/login-form.tsx):
+// deneme sınırı her ziyaretçinin kendi adresine göre işler.
 
 export async function signOut() {
   const supabase = await createClient();
@@ -50,17 +79,19 @@ export async function signOut() {
 // --- Müşteriler --------------------------------------------------------------
 
 function readCustomerForm(formData: FormData) {
-  const name = String(formData.get("name") ?? "").trim();
+  const name = text(formData.get("name"), 120);
   const type = Number(formData.get("type")) === 2 ? 2 : 1;
-  const address = String(formData.get("address") ?? "").trim() || null;
-  const note = String(formData.get("note") ?? "").trim() || null;
+  const address = text(formData.get("address"), 500);
+  const note = text(formData.get("note"), 1000);
   return { name, type, address, note };
 }
 
 export async function createCustomer(formData: FormData): Promise<ActionResult<number>> {
+  if (!(formData instanceof FormData)) return BAD_INPUT;
   const { name, type, address, note } = readCustomerForm(formData);
-  const price = parseAmount(formData.get("price"));
-  if (!name) return { ok: false, error: "Müşteri adı gerekli." };
+  if (!name) return { ok: false, error: "Müşteri adı gerekli (en çok 120 karakter)." };
+  if (address === undefined || note === undefined) return { ok: false, error: "Adres ya da not çok uzun." };
+  const price = moneyValue(formData.get("price"), 99_999);
   if (price == null || price <= 0) return { ok: false, error: "Geçerli bir ekmek fiyatı girin." };
 
   const supabase = await createClient();
@@ -78,28 +109,35 @@ export async function createCustomer(formData: FormData): Promise<ActionResult<n
 }
 
 export async function updateCustomer(id: number, formData: FormData): Promise<ActionResult> {
+  if (!isId(id) || !(formData instanceof FormData)) return BAD_INPUT;
   const { name, type, address, note } = readCustomerForm(formData);
-  if (!name) return { ok: false, error: "Müşteri adı gerekli." };
+  if (!name) return { ok: false, error: "Müşteri adı gerekli (en çok 120 karakter)." };
+  if (address === undefined || note === undefined) return { ok: false, error: "Adres ya da not çok uzun." };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("customers").update({ name, type, address, note }).eq("id", id);
+  const { data, error } = await supabase.from("customers").update({ name, type, address, note }).eq("id", id).select("id");
   if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
 
   refresh();
   return { ok: true };
 }
 
 export async function setCustomerActive(id: number, active: boolean): Promise<ActionResult> {
+  if (!isId(id) || typeof active !== "boolean") return BAD_INPUT;
+
   const supabase = await createClient();
-  const { error } = await supabase.from("customers").update({ is_active: active }).eq("id", id);
+  const { data, error } = await supabase.from("customers").update({ is_active: active }).eq("id", id).select("id");
   if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
 
   refresh();
   return { ok: true };
 }
 
 export async function setCustomerPrice(id: number, formData: FormData): Promise<ActionResult> {
-  const price = parseAmount(formData.get("price"));
+  if (!isId(id) || !(formData instanceof FormData)) return BAD_INPUT;
+  const price = moneyValue(formData.get("price"), 99_999);
   const validFrom = String(formData.get("valid_from") ?? "");
   if (price == null || price <= 0) return { ok: false, error: "Geçerli bir fiyat girin." };
   if (!isISODate(validFrom)) return { ok: false, error: "Geçerli bir başlangıç tarihi seçin." };
@@ -122,7 +160,7 @@ type Db = Awaited<ReturnType<typeof createClient>>;
 
 /** Dağıtıcı verilmezse işletme sahibinin ("Ben") kendi dağıtımı kullanılır. */
 async function resolveDriver(supabase: Db, driverId?: number): Promise<number | null> {
-  if (driverId && Number.isInteger(driverId) && driverId > 0) return driverId;
+  if (isId(driverId)) return driverId;
   const { data } = await supabase.from("drivers").select("id").eq("is_owner", true).maybeSingle();
   return data?.id ?? null;
 }
@@ -133,7 +171,9 @@ export async function addCustomersToDay(
   driverId?: number,
 ): Promise<ActionResult> {
   if (!isISODate(date)) return { ok: false, error: "Geçersiz tarih." };
-  const ids = [...new Set(customerIds.filter((n) => Number.isInteger(n) && n > 0))];
+  if (driverId != null && !isId(driverId)) return BAD_INPUT;
+  const ids = idList(customerIds);
+  if (!ids) return BAD_INPUT;
   if (ids.length === 0) return { ok: false, error: "En az bir müşteri seçin." };
 
   const supabase = await createClient();
@@ -166,7 +206,8 @@ export async function addCustomersToDay(
 /** Günün listesini verilen sırayla kaydeder (ids[0] en üstte). */
 export async function reorderDay(date: string, orderIds: number[]): Promise<ActionResult> {
   if (!isISODate(date)) return { ok: false, error: "Geçersiz tarih." };
-  const ids = orderIds.filter((n) => Number.isInteger(n) && n > 0);
+  const ids = idList(orderIds);
+  if (!ids) return BAD_INPUT;
   if (ids.length === 0) return { ok: true };
 
   const supabase = await createClient();
@@ -180,6 +221,7 @@ export async function reorderDay(date: string, orderIds: number[]): Promise<Acti
 /** Dağıtıcının geçen haftanın aynı günündeki listesini (aynı sırayla) bu güne ekler. */
 export async function copyDayFromLastWeek(date: string, driverId?: number): Promise<ActionResult<number>> {
   if (!isISODate(date)) return { ok: false, error: "Geçersiz tarih." };
+  if (driverId != null && !isId(driverId)) return BAD_INPUT;
 
   const supabase = await createClient();
   const driver = await resolveDriver(supabase, driverId);
@@ -212,38 +254,44 @@ export type SavedOrder = OrderPatch & {
 };
 
 export async function saveOrder(id: number, patch: OrderPatch): Promise<ActionResult<SavedOrder>> {
-  const clean = {
-    delivered_qty: Math.max(0, Math.trunc(Number(patch.delivered_qty) || 0)),
-    returned_qty: Math.max(0, Math.trunc(Number(patch.returned_qty) || 0)),
-    collection: Math.max(0, Math.round((Number(patch.collection) || 0) * 100) / 100),
-  };
+  if (!isId(id) || typeof patch !== "object" || patch === null) return BAD_INPUT;
+  const delivered = qtyValue(patch.delivered_qty);
+  const returned = qtyValue(patch.returned_qty);
+  const collection = moneyValue(patch.collection);
+  if (delivered == null || returned == null || collection == null) {
+    return { ok: false, error: "Girilen değer izin verilen aralığın dışında." };
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("orders")
-    .update(clean)
+    .update({ delivered_qty: delivered, returned_qty: returned, collection })
     .eq("id", id)
     .select("delivered_qty, returned_qty, collection, unit_price, net_amount, balance_delta")
-    .single();
+    .maybeSingle();
   if (error) return { ok: false, error: friendly(error) };
+  if (!data) return NO_PERMISSION;
 
   return { ok: true, data: data as SavedOrder };
 }
 
 export async function deleteOrder(id: number): Promise<ActionResult> {
+  if (!isId(id)) return BAD_INPUT;
+
   const supabase = await createClient();
-  const { error } = await supabase.from("orders").delete().eq("id", id);
+  const { data, error } = await supabase.from("orders").delete().eq("id", id).select("id");
   if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
 
   refresh();
   return { ok: true };
 }
 
-// --- Dağıtıcılar ---------------------------------------------------------------
+// --- Dağıtıcılar (yalnızca yönetici) ------------------------------------------
 
 export async function createDriver(name: string): Promise<ActionResult> {
-  const clean = name.trim().replace(/\s+/g, " ");
-  if (!clean) return { ok: false, error: "Dağıtıcı adı gerekli." };
+  const clean = text(name, 60);
+  if (!clean) return { ok: false, error: "Dağıtıcı adı gerekli (en çok 60 karakter)." };
 
   const supabase = await createClient();
   const { data: last } = await supabase
@@ -260,21 +308,31 @@ export async function createDriver(name: string): Promise<ActionResult> {
 }
 
 export async function renameDriver(id: number, name: string): Promise<ActionResult> {
-  const clean = name.trim().replace(/\s+/g, " ");
-  if (!clean) return { ok: false, error: "Dağıtıcı adı gerekli." };
+  if (!isId(id)) return BAD_INPUT;
+  const clean = text(name, 60);
+  if (!clean) return { ok: false, error: "Dağıtıcı adı gerekli (en çok 60 karakter)." };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("drivers").update({ name: clean }).eq("id", id);
+  const { data, error } = await supabase.from("drivers").update({ name: clean }).eq("id", id).select("id");
   if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
 
   refresh();
   return { ok: true };
 }
 
 export async function setDriverActive(id: number, active: boolean): Promise<ActionResult> {
+  if (!isId(id) || typeof active !== "boolean") return BAD_INPUT;
+
   const supabase = await createClient();
-  const { error } = await supabase.from("drivers").update({ is_active: active }).eq("id", id).eq("is_owner", false);
+  const { data, error } = await supabase
+    .from("drivers")
+    .update({ is_active: active })
+    .eq("id", id)
+    .eq("is_owner", false)
+    .select("id");
   if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
 
   refresh();
   return { ok: true };
@@ -299,10 +357,15 @@ export type SavedExpense = {
 };
 
 export async function addExpense(input: ExpenseInput): Promise<ActionResult<SavedExpense>> {
+  if (typeof input !== "object" || input === null) return BAD_INPUT;
   if (!isISODate(input.date)) return { ok: false, error: "Geçersiz tarih." };
-  const amount = Math.round((Number(input.amount) || 0) * 100) / 100;
-  if (amount <= 0) return { ok: false, error: "Gider tutarı girin." };
-  if (input.place === "driver" && !input.driverId) return { ok: false, error: "Dağıtıcı seçin." };
+  if (input.place !== "driver" && input.place !== "counter") return BAD_INPUT;
+  if (input.place === "driver" && !isId(input.driverId)) return { ok: false, error: "Dağıtıcı seçin." };
+  const amount = moneyValue(input.amount);
+  if (amount == null || amount <= 0) return { ok: false, error: "Gider tutarı girin." };
+  const category = text(input.category, 40);
+  const description = text(input.description, 200);
+  if (category === undefined || description === undefined) return { ok: false, error: "Açıklama çok uzun." };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -312,8 +375,8 @@ export async function addExpense(input: ExpenseInput): Promise<ActionResult<Save
       place: input.place,
       driver_id: input.place === "driver" ? input.driverId : null,
       amount,
-      category: input.category?.trim() || null,
-      description: input.description?.trim() || null,
+      category,
+      description,
     })
     .select("id, amount, category, description")
     .single();
@@ -324,9 +387,12 @@ export async function addExpense(input: ExpenseInput): Promise<ActionResult<Save
 }
 
 export async function deleteExpense(id: number): Promise<ActionResult> {
+  if (!isId(id)) return BAD_INPUT;
+
   const supabase = await createClient();
-  const { error } = await supabase.from("expenses").delete().eq("id", id);
+  const { data, error } = await supabase.from("expenses").delete().eq("id", id).select("id");
   if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
 
   refresh();
   return { ok: true };
@@ -339,8 +405,9 @@ export async function saveDriverHandover(
   driverId: number,
   handedOver: number | null,
 ): Promise<ActionResult> {
-  if (!isISODate(date)) return { ok: false, error: "Geçersiz tarih." };
-  const value = handedOver == null ? null : Math.max(0, Math.round(Number(handedOver) * 100) / 100);
+  if (!isISODate(date) || !isId(driverId)) return BAD_INPUT;
+  const value = handedOver == null ? null : moneyValue(handedOver);
+  if (handedOver != null && value == null) return { ok: false, error: "Girilen değer izin verilen aralığın dışında." };
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -365,22 +432,34 @@ export type CounterPatch = {
 };
 
 export async function saveCounterDay(date: string, patch: CounterPatch): Promise<ActionResult> {
-  if (!isISODate(date)) return { ok: false, error: "Geçersiz tarih." };
-  const money = (v: number | null) => (v == null ? null : Math.max(0, Math.round(Number(v) * 100) / 100));
-  const int = (v: number) => Math.max(0, Math.trunc(Number(v) || 0));
+  if (!isISODate(date) || typeof patch !== "object" || patch === null) return BAD_INPUT;
+  const opening = moneyValue(patch.opening_cash);
+  const sales = moneyValue(patch.sales_income);
+  const closing = moneyValue(patch.closing_cash);
+  const breadsIn = qtyValue(patch.breads_in);
+  const breadsLeft = qtyValue(patch.breads_left);
+  const price = patch.bread_price == null ? null : moneyValue(patch.bread_price, 99_999);
+  const handed = patch.handed_over == null ? null : moneyValue(patch.handed_over);
+  const note = text(patch.note, 500);
+  if (
+    opening == null || sales == null || closing == null || breadsIn == null || breadsLeft == null ||
+    (patch.bread_price != null && price == null) || (patch.handed_over != null && handed == null) || note === undefined
+  ) {
+    return { ok: false, error: "Girilen değer izin verilen aralığın dışında." };
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.from("counter_days").upsert(
     {
       entry_date: date,
-      opening_cash: money(patch.opening_cash) ?? 0,
-      breads_in: int(patch.breads_in),
-      breads_left: int(patch.breads_left),
-      bread_price: patch.bread_price && patch.bread_price > 0 ? money(patch.bread_price) : null,
-      sales_income: money(patch.sales_income) ?? 0,
-      closing_cash: money(patch.closing_cash) ?? 0,
-      handed_over: money(patch.handed_over),
-      note: patch.note?.trim() || null,
+      opening_cash: opening,
+      breads_in: breadsIn,
+      breads_left: breadsLeft,
+      bread_price: price && price > 0 ? price : null,
+      sales_income: sales,
+      closing_cash: closing,
+      handed_over: handed,
+      note,
     },
     { onConflict: "entry_date" },
   );
@@ -389,13 +468,15 @@ export async function saveCounterDay(date: string, patch: CounterPatch): Promise
   return { ok: true };
 }
 
+/** Tezgahın varsayılan ekmek fiyatı (yalnızca yönetici). */
 export async function setCounterDefaultPrice(price: number): Promise<ActionResult> {
-  const value = Math.round((Number(price) || 0) * 100) / 100;
-  if (value <= 0) return { ok: false, error: "Geçerli bir fiyat girin." };
+  const value = moneyValue(price, 99_999);
+  if (value == null || value <= 0) return { ok: false, error: "Geçerli bir fiyat girin." };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("app_settings").update({ counter_bread_price: value }).eq("id", true);
+  const { data, error } = await supabase.from("app_settings").update({ counter_bread_price: value }).eq("id", true).select("id");
   if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
 
   return { ok: true };
 }

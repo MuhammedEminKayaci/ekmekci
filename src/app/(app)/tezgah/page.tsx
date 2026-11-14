@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { CalendarCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader, Skeleton, buttonClass } from "@/components/ui";
 import { addDays, isISODate, longDate, todayTR, weekStart, weekdayLong } from "@/lib/format";
+import { getSessionProfile } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import type { DayExpense } from "../siparisler/driver-day";
 import { CounterForm, type CounterDay } from "./counter-form";
@@ -17,6 +18,7 @@ async function Counter({ searchParams }: { searchParams: Search }) {
   const supabase = await createClient();
   const today = todayTR();
   const day = isISODate(sp.gun) ? sp.gun : today;
+  const profile = await getSessionProfile();
 
   const [{ data: row }, { data: expenses }, { data: settings }] = await Promise.all([
     supabase.from("counter_days").select("*").eq("entry_date", day).maybeSingle(),
@@ -77,6 +79,7 @@ async function Counter({ searchParams }: { searchParams: Search }) {
         defaultPrice={defaultPrice}
         expenses={(expenses ?? []) as DayExpense[]}
         locked={locked}
+        isAdmin={profile?.isAdmin ?? false}
       />
     </>
   );

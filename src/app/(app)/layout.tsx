@@ -1,21 +1,15 @@
 import { Suspense } from "react";
-import { LogOut } from "lucide-react";
+import { CircleAlert, LogOut } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { Credit } from "@/components/credit";
 import { Skeleton, cx } from "@/components/ui";
 import { signOut } from "@/lib/actions";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionProfile } from "@/lib/session";
 import { SideNav, SideNavFallback, TabBar, TabBarFallback } from "./nav";
 
 async function UserCard({ onDark = false }: { onDark?: boolean }) {
-  const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-  const userId = claims?.claims.sub;
-  const { data: profile } = userId
-    ? await supabase.from("profiles").select("full_name, role").eq("id", userId).maybeSingle()
-    : { data: null };
-
-  const name = profile?.full_name || String(claims?.claims.email ?? "");
+  const profile = await getSessionProfile();
+  const name = profile?.name ?? "";
   const initial = name.trim().charAt(0).toLocaleUpperCase("tr") || "?";
 
   return (
@@ -28,7 +22,7 @@ async function UserCard({ onDark = false }: { onDark?: boolean }) {
       {onDark && (
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold text-white">{name}</p>
-          <p className="text-[0.75rem] text-white/60">{profile?.role === "admin" ? "Yönetici" : "Kullanıcı"}</p>
+          <p className="text-[0.75rem] text-white/60">{profile?.isAdmin ? "Yönetici" : profile?.isActive ? "Kullanıcı" : "Pasif hesap"}</p>
         </div>
       )}
       <form action={signOut}>
@@ -44,6 +38,20 @@ async function UserCard({ onDark = false }: { onDark?: boolean }) {
           <LogOut size={18} />
         </button>
       </form>
+    </div>
+  );
+}
+
+/** Pasif hesap verilere erişemez (veri tabanı engeller); boş sayfa yerine nedenini göster. */
+async function InactiveNotice() {
+  const profile = await getSessionProfile();
+  if (!profile || profile.isActive) return null;
+  return (
+    <div role="alert" className="mb-6 flex items-start gap-3 rounded-2xl bg-debt-soft p-4 text-debt ring-1 ring-debt/20">
+      <CircleAlert size={20} className="mt-0.5 shrink-0" />
+      <p className="font-semibold">
+        Hesabınız henüz aktif değil; kayıtları göremezsiniz. Yöneticinizden hesabınızı açmasını isteyin.
+      </p>
     </div>
   );
 }
@@ -72,7 +80,12 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             <UserCard />
           </Suspense>
         </header>
-        <main className="flex-1 px-4 pt-4 pb-44 sm:px-6 lg:px-8 lg:pt-9 lg:pb-20 xl:px-10 3xl:px-14">{children}</main>
+        <main className="flex-1 px-4 pt-4 pb-44 sm:px-6 lg:px-8 lg:pt-9 lg:pb-20 xl:px-10 3xl:px-14">
+          <Suspense fallback={null}>
+            <InactiveNotice />
+          </Suspense>
+          {children}
+        </main>
       </div>
 
       <Suspense fallback={<TabBarFallback />}>

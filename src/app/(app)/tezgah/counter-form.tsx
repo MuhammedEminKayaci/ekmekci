@@ -30,12 +30,14 @@ export function CounterForm({
   defaultPrice,
   expenses,
   locked,
+  isAdmin,
 }: {
   day: string;
   initial: CounterDay;
   defaultPrice: number | null;
   expenses: DayExpense[];
   locked: boolean;
+  isAdmin: boolean;
 }) {
   const [text, setText] = useState<Record<Field, string>>({
     opening_cash: toText(initial.opening_cash),
@@ -173,7 +175,7 @@ export function CounterForm({
             {box("breads_in", "Tezgaha konan ekmek", "adet", undefined, false)}
             <div className="sm:col-span-2">
               {box("bread_price", "Tezgah ekmek fiyatı", "₺")}
-              {!locked && values.bread_price != null && values.bread_price !== defaultPrice && (
+              {!locked && isAdmin && values.bread_price != null && values.bread_price !== defaultPrice && (
                 <button
                   type="button"
                   onClick={makeDefault}

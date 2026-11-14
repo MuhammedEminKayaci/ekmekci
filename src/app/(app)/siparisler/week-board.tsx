@@ -67,6 +67,7 @@ export function WeekBoard({
   rows: serverRows,
   customers,
   balances,
+  isAdmin,
   drivers,
   expenses,
   driverDays,
@@ -79,6 +80,7 @@ export function WeekBoard({
   rows: BoardRow[];
   customers: BoardCustomer[];
   balances: Record<number, number>;
+  isAdmin: boolean;
   drivers: BoardDriver[];
   expenses: DayExpense[];
   driverDays: DriverDayRow[];
@@ -309,6 +311,7 @@ export function WeekBoard({
               );
             },
           )}
+          {isAdmin && (
           <button
             type="button"
             onClick={() => setManaging(true)}
@@ -316,6 +319,7 @@ export function WeekBoard({
           >
             <Settings2 size={16} /> Dağıtıcılar
           </button>
+          )}
         </div>
 
         {tab === "all" && !ordering ? (
