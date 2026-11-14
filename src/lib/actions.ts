@@ -13,8 +13,8 @@ function friendly(err: PgError): string {
   if (err.code === "23505" && err.message.includes("customers_name_unique")) {
     return "Bu isimde bir müşteri zaten var.";
   }
-  if (err.code === "23505" && err.message.includes("orders_customer_day_unique")) {
-    return "Bu müşteri o gün için zaten listede.";
+  if (err.code === "23505" && err.message.includes("orders_customer_day")) {
+    return "Bu müşteri o gün bu dağıtıcının listesinde zaten var.";
   }
   if (err.code === "23514") return "Girilen değer izin verilen aralığın dışında.";
   if (err.code === "42501") return "Bu işlem için yetkiniz yok.";
@@ -115,17 +115,34 @@ export async function setCustomerPrice(id: number, formData: FormData): Promise<
 
 // --- Siparişler --------------------------------------------------------------
 
-export async function addCustomersToDay(date: string, customerIds: number[]): Promise<ActionResult> {
+type Db = Awaited<ReturnType<typeof createClient>>;
+
+/** Dağıtıcı verilmezse işletme sahibinin ("Ben") kendi dağıtımı kullanılır. */
+async function resolveDriver(supabase: Db, driverId?: number): Promise<number | null> {
+  if (driverId && Number.isInteger(driverId) && driverId > 0) return driverId;
+  const { data } = await supabase.from("drivers").select("id").eq("is_owner", true).maybeSingle();
+  return data?.id ?? null;
+}
+
+export async function addCustomersToDay(
+  date: string,
+  customerIds: number[],
+  driverId?: number,
+): Promise<ActionResult> {
   if (!isISODate(date)) return { ok: false, error: "Geçersiz tarih." };
   const ids = [...new Set(customerIds.filter((n) => Number.isInteger(n) && n > 0))];
   if (ids.length === 0) return { ok: false, error: "En az bir müşteri seçin." };
 
   const supabase = await createClient();
-  // Seçilen sırayla günün sonuna eklenir; zaten listede olanlar yerinde kalır.
+  const driver = await resolveDriver(supabase, driverId);
+  if (!driver) return { ok: false, error: "Dağıtıcı bulunamadı." };
+
+  // Seçilen sırayla dağıtıcının gün listesinin sonuna eklenir; zaten listede olanlar yerinde kalır.
   const { data: last } = await supabase
     .from("orders")
     .select("sort_order")
     .eq("entry_date", date)
+    .eq("driver_id", driver)
     .order("sort_order", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -134,8 +151,8 @@ export async function addCustomersToDay(date: string, customerIds: number[]): Pr
   const { error } = await supabase
     .from("orders")
     .upsert(
-      ids.map((customer_id, i) => ({ customer_id, entry_date: date, sort_order: base + i + 1 })),
-      { onConflict: "customer_id,entry_date", ignoreDuplicates: true },
+      ids.map((customer_id, i) => ({ customer_id, entry_date: date, driver_id: driver, sort_order: base + i + 1 })),
+      { onConflict: "customer_id,entry_date,driver_id", ignoreDuplicates: true },
     );
   if (error) return { ok: false, error: friendly(error) };
 
@@ -157,23 +174,28 @@ export async function reorderDay(date: string, orderIds: number[]): Promise<Acti
   return { ok: true };
 }
 
-/** Geçen haftanın aynı gününde listede olan aktif müşterileri bu güne ekler. */
-export async function copyDayFromLastWeek(date: string): Promise<ActionResult<number>> {
+/** Dağıtıcının geçen haftanın aynı günündeki listesini (aynı sırayla) bu güne ekler. */
+export async function copyDayFromLastWeek(date: string, driverId?: number): Promise<ActionResult<number>> {
   if (!isISODate(date)) return { ok: false, error: "Geçersiz tarih." };
 
   const supabase = await createClient();
+  const driver = await resolveDriver(supabase, driverId);
+  if (!driver) return { ok: false, error: "Dağıtıcı bulunamadı." };
+
   const { data: prev, error: readErr } = await supabase
     .from("orders")
     .select("customer_id, sort_order, customers!inner(is_active)")
     .eq("entry_date", addDays(date, -7))
+    .eq("driver_id", driver)
     .eq("customers.is_active", true)
     .order("sort_order");
   if (readErr) return { ok: false, error: friendly(readErr) };
-  if (!prev?.length) return { ok: false, error: "Geçen haftanın bu gününde kayıt yok." };
+  if (!prev?.length) return { ok: false, error: "Geçen haftanın bu gününde bu dağıtıcının kaydı yok." };
 
   const res = await addCustomersToDay(
     date,
     prev.map((r) => r.customer_id),
+    driver,
   );
   return res.ok ? { ok: true, data: prev.length } : res;
 }

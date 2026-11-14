@@ -16,16 +16,19 @@ export type Database = {
     Tables: {
       app_settings: {
         Row: {
+          counter_bread_price: number | null
           id: boolean
           lock_past_weeks: boolean
           updated_at: string
         }
         Insert: {
+          counter_bread_price?: number | null
           id?: boolean
           lock_past_weeks?: boolean
           updated_at?: string
         }
         Update: {
+          counter_bread_price?: number | null
           id?: boolean
           lock_past_weeks?: boolean
           updated_at?: string
@@ -64,6 +67,59 @@ export type Database = {
           table_name?: string
         }
         Relationships: []
+      }
+      counter_days: {
+        Row: {
+          bread_price: number | null
+          breads_in: number
+          breads_left: number
+          closing_cash: number
+          entry_date: string
+          handed_over: number | null
+          id: number
+          note: string | null
+          opening_cash: number
+          sales_income: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bread_price?: number | null
+          breads_in?: number
+          breads_left?: number
+          closing_cash?: number
+          entry_date: string
+          handed_over?: number | null
+          id?: never
+          note?: string | null
+          opening_cash?: number
+          sales_income?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bread_price?: number | null
+          breads_in?: number
+          breads_left?: number
+          closing_cash?: number
+          entry_date?: string
+          handed_over?: number | null
+          id?: never
+          note?: string | null
+          opening_cash?: number
+          sales_income?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counter_days_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customer_prices: {
         Row: {
@@ -161,6 +217,125 @@ export type Database = {
           },
         ]
       }
+      driver_days: {
+        Row: {
+          driver_id: number
+          entry_date: string
+          handed_over: number | null
+          id: number
+          note: string | null
+          updated_at: string
+        }
+        Insert: {
+          driver_id: number
+          entry_date: string
+          handed_over?: number | null
+          id?: never
+          note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          driver_id?: number
+          entry_date?: string
+          handed_over?: number | null
+          id?: never
+          note?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_days_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drivers: {
+        Row: {
+          created_at: string
+          id: number
+          is_active: boolean
+          is_owner: boolean
+          name: string
+          name_key: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          is_active?: boolean
+          is_owner?: boolean
+          name: string
+          name_key?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          is_active?: boolean
+          is_owner?: boolean
+          name?: string
+          name_key?: string | null
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          driver_id: number | null
+          entry_date: string
+          id: number
+          place: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          driver_id?: number | null
+          entry_date: string
+          id?: never
+          place: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          driver_id?: number | null
+          entry_date?: string
+          id?: never
+          place?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           balance_delta: number | null
@@ -169,6 +344,7 @@ export type Database = {
           created_by: string | null
           customer_id: number
           delivered_qty: number
+          driver_id: number
           entry_date: string
           gross_amount: number | null
           id: number
@@ -188,6 +364,7 @@ export type Database = {
           created_by?: string | null
           customer_id: number
           delivered_qty?: number
+          driver_id?: number
           entry_date: string
           gross_amount?: number | null
           id?: never
@@ -207,6 +384,7 @@ export type Database = {
           created_by?: string | null
           customer_id?: number
           delivered_qty?: number
+          driver_id?: number
           entry_date?: string
           gross_amount?: number | null
           id?: never
@@ -239,6 +417,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
             referencedColumns: ["id"]
           },
           {
@@ -367,6 +552,7 @@ export type Database = {
           customer_name: string
           customer_type: number
           delivered_qty: number
+          driver_id: number
           entry_date: string
           gross_amount: number
           id: number
