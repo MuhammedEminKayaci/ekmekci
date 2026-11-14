@@ -13,6 +13,9 @@ function friendly(err: PgError): string {
   if (err.code === "23505" && err.message.includes("customers_name_unique")) {
     return "Bu isimde bir müşteri zaten var.";
   }
+  if (err.code === "23505" && err.message.includes("drivers_name_unique")) {
+    return "Bu isimde bir dağıtıcı zaten var.";
+  }
   if (err.code === "23505" && err.message.includes("orders_customer_day")) {
     return "Bu müşteri o gün bu dağıtıcının listesinde zaten var.";
   }
@@ -233,5 +236,166 @@ export async function deleteOrder(id: number): Promise<ActionResult> {
   if (error) return { ok: false, error: friendly(error) };
 
   refresh();
+  return { ok: true };
+}
+
+// --- Dağıtıcılar ---------------------------------------------------------------
+
+export async function createDriver(name: string): Promise<ActionResult> {
+  const clean = name.trim().replace(/\s+/g, " ");
+  if (!clean) return { ok: false, error: "Dağıtıcı adı gerekli." };
+
+  const supabase = await createClient();
+  const { data: last } = await supabase
+    .from("drivers")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const { error } = await supabase.from("drivers").insert({ name: clean, sort_order: (last?.sort_order ?? 0) + 1 });
+  if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true };
+}
+
+export async function renameDriver(id: number, name: string): Promise<ActionResult> {
+  const clean = name.trim().replace(/\s+/g, " ");
+  if (!clean) return { ok: false, error: "Dağıtıcı adı gerekli." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("drivers").update({ name: clean }).eq("id", id);
+  if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true };
+}
+
+export async function setDriverActive(id: number, active: boolean): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("drivers").update({ is_active: active }).eq("id", id).eq("is_owner", false);
+  if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true };
+}
+
+// --- Giderler ------------------------------------------------------------------
+
+export type ExpenseInput = {
+  date: string;
+  place: "driver" | "counter";
+  driverId: number | null;
+  amount: number;
+  category: string | null;
+  description: string | null;
+};
+
+export type SavedExpense = {
+  id: number;
+  amount: number;
+  category: string | null;
+  description: string | null;
+};
+
+export async function addExpense(input: ExpenseInput): Promise<ActionResult<SavedExpense>> {
+  if (!isISODate(input.date)) return { ok: false, error: "Geçersiz tarih." };
+  const amount = Math.round((Number(input.amount) || 0) * 100) / 100;
+  if (amount <= 0) return { ok: false, error: "Gider tutarı girin." };
+  if (input.place === "driver" && !input.driverId) return { ok: false, error: "Dağıtıcı seçin." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("expenses")
+    .insert({
+      entry_date: input.date,
+      place: input.place,
+      driver_id: input.place === "driver" ? input.driverId : null,
+      amount,
+      category: input.category?.trim() || null,
+      description: input.description?.trim() || null,
+    })
+    .select("id, amount, category, description")
+    .single();
+  if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true, data: data as SavedExpense };
+}
+
+export async function deleteExpense(id: number): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("expenses").delete().eq("id", id);
+  if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true };
+}
+
+// --- Şoför gün sonu ------------------------------------------------------------
+
+export async function saveDriverHandover(
+  date: string,
+  driverId: number,
+  handedOver: number | null,
+): Promise<ActionResult> {
+  if (!isISODate(date)) return { ok: false, error: "Geçersiz tarih." };
+  const value = handedOver == null ? null : Math.max(0, Math.round(Number(handedOver) * 100) / 100);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("driver_days")
+    .upsert({ entry_date: date, driver_id: driverId, handed_over: value }, { onConflict: "entry_date,driver_id" });
+  if (error) return { ok: false, error: friendly(error) };
+
+  return { ok: true };
+}
+
+// --- Tezgah --------------------------------------------------------------------
+
+export type CounterPatch = {
+  opening_cash: number;
+  breads_in: number;
+  breads_left: number;
+  bread_price: number | null;
+  sales_income: number;
+  closing_cash: number;
+  handed_over: number | null;
+  note: string | null;
+};
+
+export async function saveCounterDay(date: string, patch: CounterPatch): Promise<ActionResult> {
+  if (!isISODate(date)) return { ok: false, error: "Geçersiz tarih." };
+  const money = (v: number | null) => (v == null ? null : Math.max(0, Math.round(Number(v) * 100) / 100));
+  const int = (v: number) => Math.max(0, Math.trunc(Number(v) || 0));
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("counter_days").upsert(
+    {
+      entry_date: date,
+      opening_cash: money(patch.opening_cash) ?? 0,
+      breads_in: int(patch.breads_in),
+      breads_left: int(patch.breads_left),
+      bread_price: patch.bread_price && patch.bread_price > 0 ? money(patch.bread_price) : null,
+      sales_income: money(patch.sales_income) ?? 0,
+      closing_cash: money(patch.closing_cash) ?? 0,
+      handed_over: money(patch.handed_over),
+      note: patch.note?.trim() || null,
+    },
+    { onConflict: "entry_date" },
+  );
+  if (error) return { ok: false, error: friendly(error) };
+
+  return { ok: true };
+}
+
+export async function setCounterDefaultPrice(price: number): Promise<ActionResult> {
+  const value = Math.round((Number(price) || 0) * 100) / 100;
+  if (value <= 0) return { ok: false, error: "Geçerli bir fiyat girin." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("app_settings").update({ counter_bread_price: value }).eq("id", true);
+  if (error) return { ok: false, error: friendly(error) };
+
   return { ok: true };
 }

@@ -15,12 +15,16 @@ import {
   Receipt,
   Scale,
   Search,
+  Settings2,
   Trash2,
 } from "lucide-react";
 import { Sheet } from "@/components/sheet";
 import { toast } from "@/components/toast";
 import { Balance, BalanceBadge, Button, Empty, IconChip, cx, inputClass, order } from "@/components/ui";
+import { AllView } from "./all-view";
 import { DayOrder } from "./day-order";
+import { DriverDay, type DayExpense } from "./driver-day";
+import { DriversManage } from "./drivers-manage";
 import { downloadDayList } from "./day-export";
 import { addCustomersToDay, copyDayFromLastWeek, deleteOrder, saveOrder } from "@/lib/actions";
 import { balanceTone, longDate, money, parseAmount, qty, weekdayLong, weekdayShort } from "@/lib/format";
@@ -30,6 +34,7 @@ export type BoardRow = {
   customer_id: number;
   customer_name: string;
   customer_type: number;
+  driver_id: number;
   entry_date: string;
   sort_order: number;
   delivered_qty: number;
@@ -40,6 +45,8 @@ export type BoardRow = {
 };
 
 export type BoardCustomer = { id: number; name: string; type: number; current_price: number | null };
+export type BoardDriver = { id: number; name: string; is_owner: boolean; is_active: boolean };
+type DriverDayRow = { entry_date: string; driver_id: number; handed_over: number | null };
 
 const net = (r: BoardRow) => (r.delivered_qty - r.returned_qty) * r.unit_price;
 const delta = (r: BoardRow) => net(r) - r.collection;
@@ -60,6 +67,9 @@ export function WeekBoard({
   rows: serverRows,
   customers,
   balances,
+  drivers,
+  expenses,
+  driverDays,
 }: {
   weekStart: string;
   days: string[];
@@ -69,8 +79,14 @@ export function WeekBoard({
   rows: BoardRow[];
   customers: BoardCustomer[];
   balances: Record<number, number>;
+  drivers: BoardDriver[];
+  expenses: DayExpense[];
+  driverDays: DriverDayRow[];
 }) {
   const [day, setDay] = useState(initialDay);
+  const owner = drivers.find((d) => d.is_owner);
+  const [tab, setTab] = useState<number | "all">(owner?.id ?? "all");
+  const [managing, setManaging] = useState(false);
   const [rows, setRows] = useState(serverRows);
   const [adding, setAdding] = useState(false);
   const [ordering, setOrdering] = useState(false);
@@ -90,7 +106,13 @@ export function WeekBoard({
     return map;
   }, [rows, days]);
 
-  const dayRows = byDay.get(day) ?? [];
+  const allDayRows = byDay.get(day) ?? [];
+  const dayRows = tab === "all" ? allDayRows : allDayRows.filter((r) => r.driver_id === tab);
+  const activeDriver = tab === "all" ? null : (drivers.find((d) => d.id === tab) ?? null);
+  const dayExpenses = expenses.filter((e) => e.entry_date === day);
+
+  // Sekmeler: aktif dağıtıcılar + o gün kaydı olan pasifler.
+  const tabDrivers = drivers.filter((d) => d.is_active || allDayRows.some((r) => r.driver_id === d.id));
 
   // Toplam hesap = sunucudaki bakiye + bu haftada yazılan ama henüz yenilenmemiş değişiklikler.
   const totals = useMemo(() => {
@@ -101,6 +123,11 @@ export function WeekBoard({
     }
     return (customerId: number) => (balances[customerId] ?? 0) + (diff.get(customerId) ?? 0);
   }, [rows, serverRows, balances]);
+
+  function selectTab(t: number | "all") {
+    setTab(t);
+    setOrdering(false);
+  }
 
   function selectDay(d: string) {
     setDay(d);
@@ -115,15 +142,18 @@ export function WeekBoard({
   function exportList() {
     startExport(async () => {
       try {
+        const list = new Map<number, { name: string; delivered: number; returned: number; collection: number }>();
+        for (const r of dayRows) {
+          const c = list.get(r.customer_id) ?? { name: r.customer_name, delivered: 0, returned: 0, collection: 0 };
+          c.delivered += r.delivered_qty;
+          c.returned += r.returned_qty;
+          c.collection += r.collection;
+          list.set(r.customer_id, c);
+        }
         await downloadDayList(
           day,
-          dayRows.map((r) => ({
-            name: r.customer_name,
-            delivered: r.delivered_qty,
-            returned: r.returned_qty,
-            collection: r.collection,
-            total: totals(r.customer_id),
-          })),
+          [...list.entries()].map(([id, c]) => ({ ...c, total: totals(id) })),
+          activeDriver ? (activeDriver.is_owner ? "Ben" : activeDriver.name) : undefined,
         );
         toast(`${weekdayLong(day)} listesi indirildi.`);
       } catch {
@@ -134,7 +164,7 @@ export function WeekBoard({
 
   function copyLastWeek() {
     startCopy(async () => {
-      const res = await copyDayFromLastWeek(day);
+      const res = await copyDayFromLastWeek(day, tab === "all" ? undefined : tab);
       if (res.ok) toast(`Geçen ${weekdayLong(day).toLocaleLowerCase("tr")} listesindeki ${res.data} müşteri eklendi.`);
       else toast(res.error, "error");
     });
@@ -168,7 +198,7 @@ export function WeekBoard({
                 {Number(d.slice(8))}
               </span>
               <span className={cx("tnum mt-1.5 hidden text-[0.75rem] sm:block", active ? "text-white/80" : "text-ink-3")}>
-                {list.length ? `${list.length} müşteri` : "Kayıt yok"}
+                {list.length ? `${new Set(list.map((r) => r.customer_id)).size} müşteri` : "Kayıt yok"}
               </span>
               <span className={cx("tnum hidden max-w-full truncate text-[0.85rem] font-semibold sm:block", active ? "text-white" : "text-ink-2")}>
                 {list.length ? money(sum(list, net)) : "—"}
@@ -225,12 +255,12 @@ export function WeekBoard({
                 <FileSpreadsheet size={18} className="text-brand-deep dark:text-brand" />
                 {exporting ? "Hazırlanıyor…" : "Liste çıkar"}
               </Button>
-              {!locked && dayRows.length > 1 && (
+              {!locked && activeDriver && dayRows.length > 1 && (
                 <Button onClick={() => setOrdering(true)}>
                   <ArrowUpDown size={18} /> Sırayı düzenle
                 </Button>
               )}
-              {!locked && (
+              {!locked && activeDriver && (
                 <>
                   <Button onClick={copyLastWeek} disabled={copying}>
                     <CopyPlus size={18} />
@@ -245,7 +275,58 @@ export function WeekBoard({
           )}
         </div>
 
-        {ordering ? (
+        {/* Dağıtıcı sekmeleri */}
+        <div className="flex items-center gap-2 overflow-x-auto px-5 pb-4 sm:px-6" role="tablist" aria-label="Dağıtıcılar">
+          {[{ id: "all" as const, label: "Hepsi" }, ...tabDrivers.map((d) => ({ id: d.id, label: d.is_owner ? "Ben" : d.name }))].map(
+            (t) => {
+              const count =
+                t.id === "all"
+                  ? new Set(allDayRows.map((r) => r.customer_id)).size
+                  : allDayRows.filter((r) => r.driver_id === t.id).length;
+              const active = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => selectTab(t.id)}
+                  className={cx(
+                    "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-[0.9rem] font-semibold transition-all duration-300",
+                    active ? "brand-fill" : "neu-sm text-ink-2 hover:text-ink",
+                  )}
+                >
+                  {t.label}
+                  <span
+                    className={cx(
+                      "tnum min-w-6 rounded-full px-1.5 text-[0.75rem]",
+                      active ? "bg-white/20" : "bg-bg-deep text-ink-3",
+                    )}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            },
+          )}
+          <button
+            type="button"
+            onClick={() => setManaging(true)}
+            className="ml-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-[0.85rem] font-semibold text-ink-2 hover:bg-brand-soft hover:text-ink"
+          >
+            <Settings2 size={16} /> Dağıtıcılar
+          </button>
+        </div>
+
+        {tab === "all" && !ordering ? (
+          <AllView
+            rows={allDayRows}
+            drivers={drivers}
+            expenses={dayExpenses}
+            total={totals}
+            onPickDriver={(id) => selectTab(id)}
+          />
+        ) : ordering ? (
           <DayOrder
             day={day}
             items={dayRows.map((r) => ({ id: r.id, name: r.customer_name }))}
@@ -300,11 +381,32 @@ export function WeekBoard({
             <DayTotals rows={dayRows} />
           </>
         )}
+
+        {activeDriver && !ordering && (dayRows.length > 0 || dayExpenses.some((e) => e.driver_id === activeDriver.id)) && (
+          <DriverDay
+            key={`${day}-${activeDriver.id}`}
+            day={day}
+            driver={activeDriver}
+            rows={dayRows}
+            expenses={dayExpenses.filter((e) => e.driver_id === activeDriver.id)}
+            handedOver={driverDays.find((d) => d.entry_date === day && d.driver_id === activeDriver.id)?.handed_over ?? null}
+            locked={locked}
+          />
+        )}
       </section>
 
-      <Sheet open={adding} onClose={() => setAdding(false)} title={`${weekdayLong(day)} için müşteri ekle`}>
+      <Sheet open={managing} onClose={() => setManaging(false)} title="Dağıtıcılar">
+        <DriversManage drivers={drivers} />
+      </Sheet>
+
+      <Sheet
+        open={adding}
+        onClose={() => setAdding(false)}
+        title={`${weekdayLong(day)} · ${activeDriver ? (activeDriver.is_owner ? "Benim listem" : `${activeDriver.name} listesi`) : ""}`}
+      >
         <AddCustomersForm
           day={day}
+          driverId={activeDriver?.id}
           customers={customers}
           taken={new Set(dayRows.map((r) => r.customer_id))}
           onClose={() => setAdding(false)}
@@ -606,11 +708,13 @@ function DayTotals({ rows }: { rows: BoardRow[] }) {
 
 function AddCustomersForm({
   day,
+  driverId,
   customers,
   taken,
   onClose,
 }: {
   day: string;
+  driverId?: number;
   customers: BoardCustomer[];
   taken: Set<number>;
   onClose: () => void;
@@ -634,7 +738,7 @@ function AddCustomersForm({
 
   function submit() {
     start(async () => {
-      const res = await addCustomersToDay(day, [...picked]);
+      const res = await addCustomersToDay(day, [...picked], driverId);
       if (res.ok) {
         toast(`${picked.size} müşteri eklendi. Şimdi sayıları yazabilirsiniz.`);
         onClose();

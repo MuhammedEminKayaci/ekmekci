@@ -3,7 +3,8 @@ import { Suspense } from "react";
 import { PageHeader, Skeleton, WeekNav } from "@/components/ui";
 import { addDays, isISODate, todayTR, weekDays, weekStart } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { WeekBoard, type BoardCustomer, type BoardRow } from "./week-board";
+import type { DayExpense } from "./driver-day";
+import { WeekBoard, type BoardCustomer, type BoardDriver, type BoardRow } from "./week-board";
 
 export const metadata: Metadata = { title: "Siparişler" };
 
@@ -18,13 +19,23 @@ async function Board({ searchParams }: { searchParams: Search }) {
   const days = weekDays(start);
   const day = isISODate(sp.gun) && days.includes(sp.gun) ? sp.gun : days.includes(today) ? today : start;
 
-  const [{ data: rows }, { data: customers }, { data: settings }] = await Promise.all([
+  const end = addDays(start, 6);
+  const [{ data: rows }, { data: customers }, { data: settings }, { data: drivers }, { data: expenses }, { data: driverDays }] = await Promise.all([
     supabase.rpc("get_week_board", { p_date: start }),
     supabase
       .from("customer_overview")
       .select("id, name, type, current_price, is_active, balance")
       .order("name"),
     supabase.from("app_settings").select("lock_past_weeks").maybeSingle(),
+    supabase.from("drivers").select("id, name, is_owner, is_active").order("sort_order"),
+    supabase
+      .from("expenses")
+      .select("id, entry_date, driver_id, amount, category, description")
+      .eq("place", "driver")
+      .gte("entry_date", start)
+      .lte("entry_date", end)
+      .order("created_at"),
+    supabase.from("driver_days").select("entry_date, driver_id, handed_over").gte("entry_date", start).lte("entry_date", end),
   ]);
 
   const hrefFor = (offset: number) => `/siparisler?hafta=${addDays(start, offset * 7)}`;
@@ -52,6 +63,9 @@ async function Board({ searchParams }: { searchParams: Search }) {
         rows={(rows ?? []) as BoardRow[]}
         customers={all.filter((c) => c.is_active) as BoardCustomer[]}
         balances={balances}
+        drivers={(drivers ?? []) as BoardDriver[]}
+        expenses={(expenses ?? []) as DayExpense[]}
+        driverDays={(driverDays ?? []).map((d) => ({ ...d, handed_over: d.handed_over == null ? null : Number(d.handed_over) }))}
       />
     </>
   );
