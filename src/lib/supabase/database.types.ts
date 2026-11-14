@@ -171,6 +171,59 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "customer_prices_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_products: {
+        Row: {
+          created_at: string
+          customer_id: number
+          id: number
+          is_active: boolean
+          product_id: number
+        }
+        Insert: {
+          created_at?: string
+          customer_id: number
+          id?: never
+          is_active?: boolean
+          product_id: number
+        }
+        Update: {
+          created_at?: string
+          customer_id?: number
+          id?: never
+          is_active?: boolean
+          product_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_products_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_overview"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_products_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
         ]
       }
       customers: {
@@ -339,6 +392,63 @@ export type Database = {
           },
         ]
       }
+      order_lines: {
+        Row: {
+          created_at: string
+          delivered_qty: number
+          gross_amount: number | null
+          id: number
+          net_amount: number | null
+          order_id: number
+          product_id: number
+          return_amount: number | null
+          returned_qty: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_qty?: number
+          gross_amount?: number | null
+          id?: never
+          net_amount?: number | null
+          order_id: number
+          product_id: number
+          return_amount?: number | null
+          returned_qty?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivered_qty?: number
+          gross_amount?: number | null
+          id?: never
+          net_amount?: number | null
+          order_id?: number
+          product_id?: number
+          return_amount?: number | null
+          returned_qty?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_lines_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           balance_delta: number | null
@@ -454,7 +564,7 @@ export type Database = {
           id?: never
           is_active?: boolean
           name: string
-          name_key?: never
+          name_key?: string | null
           sort_order?: number
           suggested_price?: number | null
           unit?: string
@@ -464,76 +574,10 @@ export type Database = {
           id?: never
           is_active?: boolean
           name?: string
-          name_key?: never
+          name_key?: string | null
           sort_order?: number
           suggested_price?: number | null
           unit?: string
-        }
-        Relationships: []
-      }
-      customer_products: {
-        Row: {
-          created_at: string
-          customer_id: number
-          id: number
-          is_active: boolean
-          product_id: number
-        }
-        Insert: {
-          created_at?: string
-          customer_id: number
-          id?: never
-          is_active?: boolean
-          product_id: number
-        }
-        Update: {
-          created_at?: string
-          customer_id?: number
-          id?: never
-          is_active?: boolean
-          product_id?: number
-        }
-        Relationships: []
-      }
-      order_lines: {
-        Row: {
-          created_at: string
-          delivered_qty: number
-          gross_amount: number | null
-          id: number
-          net_amount: number | null
-          order_id: number
-          product_id: number
-          return_amount: number | null
-          returned_qty: number
-          unit_price: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          delivered_qty?: number
-          gross_amount?: never
-          id?: never
-          net_amount?: never
-          order_id: number
-          product_id: number
-          return_amount?: never
-          returned_qty?: number
-          unit_price?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          delivered_qty?: number
-          gross_amount?: never
-          id?: never
-          net_amount?: never
-          order_id?: number
-          product_id?: number
-          return_amount?: never
-          returned_qty?: number
-          unit_price?: number
-          updated_at?: string
         }
         Relationships: []
       }
@@ -593,31 +637,6 @@ export type Database = {
         }
         Returns: number
       }
-      get_product_daily: {
-        Args: { p_from: string; p_to: string }
-        Returns: {
-          customers: number
-          delivered_qty: number
-          entry_date: string
-          net_amount: number
-          product_id: number
-          returned_qty: number
-        }[]
-      }
-      get_week_lines: {
-        Args: { p_date: string }
-        Returns: {
-          delivered_qty: number
-          id: number
-          net_amount: number
-          order_id: number
-          product_id: number
-          product_name: string
-          product_unit: string
-          returned_qty: number
-          unit_price: number
-        }[]
-      }
       get_customer_period_summary: {
         Args: { p_from: string; p_to: string }
         Returns: {
@@ -653,6 +672,17 @@ export type Database = {
           return_amount: number
           returned_qty: number
           running_balance: number
+        }[]
+      }
+      get_product_daily: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          customers: number
+          delivered_qty: number
+          entry_date: string
+          net_amount: number
+          product_id: number
+          returned_qty: number
         }[]
       }
       get_totals: {
@@ -691,12 +721,31 @@ export type Database = {
           unit_price: number
         }[]
       }
+      get_week_lines: {
+        Args: { p_date: string }
+        Returns: {
+          delivered_qty: number
+          id: number
+          net_amount: number
+          order_id: number
+          product_id: number
+          product_name: string
+          product_unit: string
+          returned_qty: number
+          unit_price: number
+        }[]
+      }
       reorder_day: {
         Args: { p_date: string; p_ids: number[] }
         Returns: undefined
       }
       set_customer_price: {
-        Args: { p_customer_id: number; p_price: number; p_product_id: number; p_valid_from?: string }
+        Args: {
+          p_customer_id: number
+          p_price: number
+          p_product_id: number
+          p_valid_from?: string
+        }
         Returns: undefined
       }
     }
