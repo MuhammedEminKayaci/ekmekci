@@ -214,7 +214,7 @@ export function ExpenseList({
       {expenses.length === 0 ? (
         <p className="rounded-xl bg-bg-deep/60 px-3.5 py-3 text-[0.88rem] text-ink-2">Bugün gider yazılmadı.</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="scroll-soft flex flex-col gap-2 lg:max-h-[18rem] lg:overflow-y-auto lg:pr-1">
           {expenses.map((x) => (
             <li key={x.id} className="flex items-center gap-3 rounded-xl bg-bg-deep/60 px-3.5 py-2.5">
               <span className="min-w-0 flex-1">

@@ -44,6 +44,21 @@ export function CounterView({
   const itemsTotal = sales.reduce((a, s) => a + s.amount, 0);
   const total = breadValue + itemsTotal;
 
+  // Fişte aynı ürün tek satır: 2 + 1 zeytinyağı → 3 zeytinyağı.
+  const grouped = new Map<string, { name: string; qty: number; amount: number; prices: Set<number> }>();
+  for (const x of sales) {
+    const g = grouped.get(x.name) ?? { name: x.name, qty: 0, amount: 0, prices: new Set<number>() };
+    g.qty += x.qty;
+    g.amount += x.amount;
+    g.prices.add(x.unit_price);
+    grouped.set(x.name, g);
+  }
+  const lines = [...grouped.values()].map((g) => ({
+    ...g,
+    prices: [...g.prices].map((p) => `tanesi ${money(p)}`).join(" / "),
+  }));
+  const itemCount = sales.reduce((a, x) => a + x.qty, 0);
+
   async function commitBread() {
     if (locked || breadValue === savedBread) return;
     setState("saving");
@@ -78,45 +93,74 @@ export function CounterView({
       )}
 
       <div className="grid gap-4 sm:gap-5 lg:grid-cols-12">
-        {/* Toplam */}
-        <section className="brand-fill animate-rise relative order-first overflow-hidden rounded-tile p-5 sm:p-7 lg:order-last lg:col-span-5 lg:row-span-2">
-          <div className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-white/[0.07]" aria-hidden />
-          <div className="relative flex items-center justify-between gap-3">
-            <h2 className="flex items-center gap-2 font-display text-[1.15rem] font-semibold">
-              <Store size={19} /> Tezgah toplamı
-            </h2>
-            <span className="h-6 text-[0.8rem] font-semibold text-white/80">
-              {state === "saving" ? "Kaydediliyor…" : state === "saved" ? (
-                <span className="flex items-center gap-1">
-                  <Check size={14} /> Kaydedildi
-                </span>
-              ) : null}
-            </span>
+        {/* Toplam: fiş görünümü */}
+        <section className="animate-rise order-first flex flex-col overflow-hidden rounded-tile shadow-[0_24px_48px_-24px_rgba(8,60,32,0.45)] lg:order-last lg:col-span-5 lg:row-span-2 lg:min-h-[34rem]">
+          <div className="brand-fill relative overflow-hidden p-5 sm:p-7">
+            <div className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-white/[0.07]" aria-hidden />
+            <div className="relative flex items-center justify-between gap-3">
+              <h2 className="flex items-center gap-2 font-display text-[1.1rem] font-semibold">
+                <Store size={19} /> Tezgah toplamı
+              </h2>
+              <span className="flex h-6 items-center gap-1 text-[0.8rem] font-semibold text-white/85">
+                {state === "saving" && "Kaydediliyor…"}
+                {state === "saved" && (
+                  <>
+                    <Check size={14} /> Kaydedildi
+                  </>
+                )}
+              </span>
+            </div>
+            <p className="relative mt-4 font-display tnum text-[2.9rem] leading-none font-semibold tracking-[-0.03em] sm:text-[3.5rem]">
+              <AnimatedNumber value={total} />
+            </p>
+            <p className="relative mt-2 text-[0.85rem] text-white/80">
+              {sales.length === 0 ? "Yalnızca ekmek" : `Ekmek + ${lines.length} çeşit ek ürün (${qty(itemCount)} adet)`}
+            </p>
           </div>
-          <p className="relative mt-4 font-display tnum text-[2.8rem] leading-none font-semibold tracking-[-0.03em] sm:text-[3.4rem]">
-            <AnimatedNumber value={total} />
-          </p>
-          <dl className="relative mt-6 flex flex-col gap-2 rounded-2xl bg-white/12 p-4 ring-1 ring-white/15 text-[0.92rem]">
-            <div className="flex justify-between gap-3">
-              <dt className="text-white/80">Ekmek parası</dt>
-              <dd className="tnum font-semibold">{money(breadValue)}</dd>
+
+          <div className="flex flex-1 flex-col bg-surface p-5 sm:p-6">
+            <div className="tnum grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-4 border-b border-line pb-2 text-[0.74rem] font-semibold tracking-wide text-ink-3 uppercase">
+              <span>Kalem</span>
+              <span className="text-right">Adet</span>
+              <span className="min-w-[5.5rem] text-right">Tutar</span>
             </div>
-            {sales.map((s) => (
-              <div key={s.id} className="flex justify-between gap-3">
-                <dt className="min-w-0 truncate text-white/80">
-                  {qty(s.qty)} × {s.name}
-                </dt>
-                <dd className="tnum font-semibold">{money(s.amount)}</dd>
+            <ul className="tnum flex flex-col text-[0.94rem]">
+              <li className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 border-b border-dashed border-line py-2.5">
+                <span className="flex min-w-0 items-center gap-2 font-semibold">
+                  <Wheat size={15} className="shrink-0 text-amber" /> Ekmek parası
+                </span>
+                <span className="text-right text-ink-3">—</span>
+                <span className="min-w-[5.5rem] text-right font-semibold">{money(breadValue)}</span>
+              </li>
+              {lines.map((l) => (
+                <li key={l.name} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 border-b border-dashed border-line py-2.5">
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">{l.name}</span>
+                    <span className="text-[0.76rem] text-ink-3">{l.prices}</span>
+                  </span>
+                  <span className="text-right text-ink-2">{qty(l.qty)}</span>
+                  <span className="min-w-[5.5rem] text-right font-semibold">{money(l.amount)}</span>
+                </li>
+              ))}
+            </ul>
+            {sales.length === 0 && <p className="py-4 text-center text-[0.85rem] text-ink-3">Ek ürün satışı eklenince burada listelenir.</p>}
+
+            <div className="mt-auto pt-5">
+              {sales.length > 0 && (
+                <div className="tnum flex justify-between gap-3 py-1 text-[0.88rem] text-ink-2">
+                  <span>Ek ürünler</span>
+                  <span className="font-semibold">{money(itemsTotal)}</span>
+                </div>
+              )}
+              <div className="tnum flex items-baseline justify-between gap-3 border-t-2 border-ink/80 pt-3">
+                <span className="font-display text-[1.05rem] font-semibold">Toplam</span>
+                <span className="font-display text-[1.6rem] font-semibold text-brand-deep dark:text-brand">{money(total)}</span>
               </div>
-            ))}
-            <div className="mt-1 flex justify-between gap-3 border-t border-white/20 pt-2.5 text-[1.02rem]">
-              <dt className="font-semibold">Toplam</dt>
-              <dd className="tnum font-display font-semibold">{money(total)}</dd>
+              <Button onClick={exportReport} disabled={exporting} className="mt-4 w-full">
+                <FileSpreadsheet size={17} className="text-brand-deep dark:text-brand" /> {exporting ? "Hazırlanıyor…" : "Gün sonu çıktısı (A4)"}
+              </Button>
             </div>
-          </dl>
-          <Button onClick={exportReport} disabled={exporting} className="relative mt-5 w-full bg-white text-[#0a5a32] hover:bg-white/90">
-            <FileSpreadsheet size={17} /> {exporting ? "Hazırlanıyor…" : "Gün sonu çıktısı (A4)"}
-          </Button>
+          </div>
         </section>
 
         {/* Ekmek parası */}
@@ -152,7 +196,7 @@ export function CounterView({
           {sales.length === 0 ? (
             <p className="rounded-xl bg-bg-deep/60 px-3.5 py-3 text-[0.88rem] text-ink-2">Bugün ek ürün satılmadı.</p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="scroll-soft flex flex-col gap-2 lg:max-h-[26rem] lg:overflow-y-auto lg:pr-1">
               {sales.map((s) => (
                 <SaleRow key={s.id} sale={s} locked={locked} />
               ))}

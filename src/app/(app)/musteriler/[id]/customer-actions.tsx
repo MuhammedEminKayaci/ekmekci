@@ -5,6 +5,7 @@ import { Pencil, Power, X } from "lucide-react";
 import { Sheet } from "@/components/sheet";
 import { toast } from "@/components/toast";
 import { Button, Field, buttonClass, cx, inputClass } from "@/components/ui";
+import { money, shortDate } from "@/lib/format";
 import { removeCustomerProduct, setCustomerActive, setCustomerPrice } from "@/lib/actions";
 import { CustomerForm, type CustomerFormValues } from "../customer-form";
 
@@ -139,6 +140,54 @@ export function PriceAction({
         </form>
       </Sheet>
     </>
+  );
+}
+
+/** Müşterinin ürünleri: her biri tek satır; 4'ten fazlası katlanır, sayfa uzamaz. */
+export function ProductPrices({
+  customerId,
+  owned,
+}: {
+  customerId: number;
+  owned: Array<OwnedProduct & { history: number[] }>;
+}) {
+  const [all, setAll] = useState(false);
+  const LIMIT = 4;
+  if (owned.length === 0) return <p className="text-[0.9rem] text-ink-2">Bu müşteriye henüz ürün eklenmedi.</p>;
+  const shown = all ? owned : owned.slice(0, LIMIT);
+
+  return (
+    <div className="flex flex-col">
+      <ul className="flex flex-col divide-y divide-line">
+        {shown.map((p) => {
+          const before = p.history.slice(1, 3);
+          return (
+            <li key={p.product_id} className="flex min-h-11 items-center gap-2 py-1.5">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold">{p.name}</span>
+                {(p.since || before.length > 0) && (
+                  <span className="tnum block truncate text-[0.74rem] text-ink-3">
+                    {p.since ? `${shortDate(p.since)}'den beri` : ""}
+                    {before.length > 0 && ` · önce ${before.map((x) => money(x)).join(", ")}`}
+                  </span>
+                )}
+              </span>
+              <span className="tnum font-display text-[1.08rem] font-semibold">{money(p.price)}</span>
+              <RemoveProduct customerId={customerId} productId={p.product_id} name={p.name} />
+            </li>
+          );
+        })}
+      </ul>
+      {owned.length > LIMIT && (
+        <button
+          type="button"
+          onClick={() => setAll((v) => !v)}
+          className="mt-1 self-start rounded-lg px-2 py-1.5 text-[0.84rem] font-semibold text-brand-deep hover:bg-brand-soft dark:text-brand"
+        >
+          {all ? "Daha az göster" : `+${owned.length - LIMIT} ürün daha`}
+        </button>
+      )}
+    </div>
   );
 }
 

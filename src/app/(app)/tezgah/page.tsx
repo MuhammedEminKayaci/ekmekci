@@ -16,7 +16,7 @@ async function Counter({ searchParams }: { searchParams: Search }) {
   const today = todayTR();
   const day = isISODate(sp.gun) ? sp.gun : today;
 
-  const [{ data: row }, { data: sales }, { data: recent }, { data: products }, { data: settings }] = await Promise.all([
+  const [{ data: row }, { data: sales }, { data: recent }, { data: products }, { data: categories }, { data: settings }] = await Promise.all([
     supabase.from("counter_days").select("sales_income").eq("entry_date", day).maybeSingle(),
     supabase.from("counter_sales").select("id, name, qty, unit_price, amount").eq("entry_date", day).order("created_at"),
     supabase
@@ -26,16 +26,33 @@ async function Counter({ searchParams }: { searchParams: Search }) {
       .order("entry_date", { ascending: false })
       .order("id", { ascending: false })
       .limit(400),
-    supabase.from("products").select("name, suggested_price").eq("is_active", true).order("sort_order"),
+    supabase.from("products").select("name, suggested_price, category_id").eq("is_active", true).order("sort_order"),
+    supabase.from("product_categories").select("id, is_bread"),
     supabase.from("app_settings").select("lock_past_weeks").maybeSingle(),
   ]);
 
   const locked = (settings?.lock_past_weeks ?? true) && weekStart(day) < weekStart(today);
 
-  // Hızlı seçim: son satılan ek ürünler (son fiyatıyla), sonra katalogdaki ürünler.
+  // Hızlı seçim: katalogdaki ekmek dışı ürünler (son satış fiyatıyla, yoksa öneri fiyatıyla),
+  // sonra katalogda olmayan ama son zamanlarda satılan ek ürünler. Ekmek türleri listelenmez:
+  // tezgahta ekmek, çeşidi fark etmeksizin tek tutar olarak girilir.
+  const breadCats = new Set((categories ?? []).filter((c) => c.is_bread).map((c) => c.id));
+  const key = (n: string) => n.toLocaleLowerCase("tr").replace(/\s+/g, " ").trim();
+  const lastPrice = new Map<string, number>();
+  for (const r of recent ?? []) if (!lastPrice.has(key(r.name))) lastPrice.set(key(r.name), Number(r.unit_price));
+  const breadNames = new Set((products ?? []).filter((p) => breadCats.has(p.category_id)).map((p) => key(p.name)));
   const picks = new Map<string, number | null>();
-  for (const r of recent ?? []) if (!picks.has(r.name)) picks.set(r.name, Number(r.unit_price));
-  for (const p of products ?? []) if (!picks.has(p.name)) picks.set(p.name, p.suggested_price == null ? null : Number(p.suggested_price));
+  for (const p of products ?? []) {
+    if (breadCats.has(p.category_id)) continue;
+    picks.set(p.name, lastPrice.get(key(p.name)) ?? (p.suggested_price == null ? null : Number(p.suggested_price)));
+  }
+  const pickedKeys = new Set([...picks.keys()].map(key));
+  for (const r of recent ?? []) {
+    const k = key(r.name);
+    if (pickedKeys.has(k) || breadNames.has(k)) continue;
+    pickedKeys.add(k);
+    picks.set(r.name, Number(r.unit_price));
+  }
 
   return (
     <>
@@ -51,7 +68,7 @@ async function Counter({ searchParams }: { searchParams: Search }) {
         day={day}
         bread={Number(row?.sales_income ?? 0)}
         sales={(sales ?? []).map((r) => ({ ...r, qty: Number(r.qty), unit_price: Number(r.unit_price), amount: Number(r.amount) }))}
-        picks={[...picks].slice(0, 12).map(([name, price]) => ({ name, price }))}
+        picks={[...picks].slice(0, 16).map(([name, price]) => ({ name, price }))}
         locked={locked}
       />
     </>

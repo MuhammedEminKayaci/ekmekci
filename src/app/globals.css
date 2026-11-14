@@ -375,3 +375,10 @@ dialog[open] {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* İnce, sade kaydırma çubuğu (uzun listeler sayfayı uzatmasın diye kutu içinde kayar). */
+@utility scroll-soft {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge-strong, rgba(0, 0, 0, 0.2)) transparent;
+  overscroll-behavior: contain;
+}

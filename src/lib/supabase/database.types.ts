@@ -129,6 +129,7 @@ export type Database = {
           entry_date: string
           id: number
           name: string
+          product_id: number | null
           qty: number
           unit_price: number
           updated_at: string
@@ -140,6 +141,7 @@ export type Database = {
           entry_date: string
           id?: never
           name: string
+          product_id?: number | null
           qty: number
           unit_price: number
           updated_at?: string
@@ -151,6 +153,7 @@ export type Database = {
           entry_date?: string
           id?: never
           name?: string
+          product_id?: number | null
           qty?: number
           unit_price?: number
           updated_at?: string
@@ -161,6 +164,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counter_sales_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -592,8 +602,36 @@ export type Database = {
           },
         ]
       }
+      product_categories: {
+        Row: {
+          created_at: string
+          id: number
+          is_bread: boolean
+          name: string
+          name_key: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          is_bread?: boolean
+          name: string
+          name_key?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          is_bread?: boolean
+          name?: string
+          name_key?: string | null
+          sort_order?: number
+        }
+        Relationships: []
+      }
       products: {
         Row: {
+          category_id: number
           created_at: string
           id: number
           is_active: boolean
@@ -604,6 +642,7 @@ export type Database = {
           unit: string
         }
         Insert: {
+          category_id: number
           created_at?: string
           id?: never
           is_active?: boolean
@@ -614,6 +653,7 @@ export type Database = {
           unit?: string
         }
         Update: {
+          category_id?: number
           created_at?: string
           id?: never
           is_active?: boolean
@@ -623,7 +663,15 @@ export type Database = {
           suggested_price?: number | null
           unit?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

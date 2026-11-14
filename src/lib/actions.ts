@@ -28,6 +28,12 @@ function friendly(err: PgError): string {
   if (err.code === "23505" && err.message.includes("products_name_unique")) {
     return "Bu isimde bir ürün zaten var.";
   }
+  if (err.code === "23505" && err.message.includes("product_categories_name_unique")) {
+    return "Bu isimde bir tür zaten var.";
+  }
+  if (err.code === "23503" && err.message.includes("products_category_id_fkey")) {
+    return "Bu türde ürünler var; önce ürünleri başka türe taşıyın.";
+  }
   if (err.code === "23505" && err.message.includes("order_lines_order_product")) {
     return "Bu ürün bu müşterinin satırında zaten var.";
   }
@@ -207,21 +213,23 @@ export async function removeCustomerProduct(customerId: number, productId: numbe
 
 // --- Ürünler (yalnızca yönetici) ------------------------------------------------
 
-export type ProductInput = { name: string; unit: string; suggested_price: number | null };
+export type ProductInput = { name: string; unit: string; suggested_price: number | null; category_id: number };
 
-function readProduct(input: unknown): { name: string; unit: string; suggested_price: number | null } | null {
+function readProduct(
+  input: unknown,
+): { name: string; unit: string; suggested_price: number | null; category_id: number } | null {
   if (typeof input !== "object" || input === null) return null;
-  const { name, unit, suggested_price } = input as ProductInput;
+  const { name, unit, suggested_price, category_id } = input as ProductInput;
   const n = text(name, 60);
   const u = text(unit, 12) ?? "adet";
   const price = suggested_price == null ? null : moneyValue(suggested_price, 99_999);
-  if (!n || u === undefined || (suggested_price != null && (price == null || price <= 0))) return null;
-  return { name: n, unit: u, suggested_price: price };
+  if (!n || u === undefined || !isId(category_id) || (suggested_price != null && (price == null || price <= 0))) return null;
+  return { name: n, unit: u, suggested_price: price, category_id };
 }
 
 export async function createProduct(input: ProductInput): Promise<ActionResult> {
   const p = readProduct(input);
-  if (!p) return { ok: false, error: "Ürün adı gerekli; birim ve öneri fiyatı geçerli olmalı." };
+  if (!p) return { ok: false, error: "Ürün adı ve türü gerekli; birim ve öneri fiyatı geçerli olmalı." };
 
   const supabase = await createClient();
   const { data: last } = await supabase
@@ -256,6 +264,62 @@ export async function setProductActive(id: number, active: boolean): Promise<Act
 
   const supabase = await createClient();
   const { data, error } = await supabase.from("products").update({ is_active: active }).eq("id", id).select("id");
+  if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
+
+  refresh();
+  return { ok: true };
+}
+
+// --- Ürün türleri (yalnızca yönetici) -------------------------------------------
+
+export type CategoryInput = { name: string; is_bread: boolean };
+
+function readCategory(input: unknown): CategoryInput | null {
+  if (typeof input !== "object" || input === null) return null;
+  const { name, is_bread } = input as CategoryInput;
+  const n = text(name, 40);
+  if (!n || typeof is_bread !== "boolean") return null;
+  return { name: n, is_bread };
+}
+
+export async function createCategory(input: CategoryInput): Promise<ActionResult> {
+  const c = readCategory(input);
+  if (!c) return { ok: false, error: "Tür adını yazın." };
+
+  const supabase = await createClient();
+  const { data: last } = await supabase
+    .from("product_categories")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const { error } = await supabase.from("product_categories").insert({ ...c, sort_order: (last?.sort_order ?? 0) + 1 });
+  if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true };
+}
+
+export async function updateCategory(id: number, input: CategoryInput): Promise<ActionResult> {
+  if (!isId(id)) return BAD_INPUT;
+  const c = readCategory(input);
+  if (!c) return { ok: false, error: "Tür adını yazın." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("product_categories").update(c).eq("id", id).select("id");
+  if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
+
+  refresh();
+  return { ok: true };
+}
+
+export async function deleteCategory(id: number): Promise<ActionResult> {
+  if (!isId(id)) return BAD_INPUT;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("product_categories").delete().eq("id", id).select("id");
   if (error) return { ok: false, error: friendly(error) };
   if (!data?.length) return NO_PERMISSION;
 

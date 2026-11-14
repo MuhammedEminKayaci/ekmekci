@@ -10,6 +10,7 @@ import {
   CopyPlus,
   FileSpreadsheet,
   HandCoins,
+  Loader2,
   Lock,
   Plus,
   Receipt,
@@ -17,6 +18,7 @@ import {
   Search,
   Settings2,
   Trash2,
+  X,
 } from "lucide-react";
 import { Sheet } from "@/components/sheet";
 import { toast } from "@/components/toast";
@@ -71,7 +73,10 @@ function sum(rows: BoardRow[], f: (r: BoardRow) => number) {
 }
 
 const GRID =
-  "xl:grid xl:grid-cols-[minmax(8rem,1fr)_minmax(19rem,2.6fr)_minmax(7rem,0.9fr)_minmax(5.5rem,0.7fr)_minmax(7rem,0.9fr)_minmax(7.5rem,0.9fr)_2.5rem] xl:items-start xl:gap-3 2xl:gap-4";
+  "xl:grid xl:grid-cols-[minmax(8rem,1fr)_minmax(19rem,2.6fr)_minmax(7rem,0.9fr)_minmax(5.5rem,0.7fr)_minmax(7rem,0.9fr)_minmax(7.5rem,0.9fr)_5.25rem] xl:items-start xl:gap-3 2xl:gap-4";
+
+/** Ürün satırının iç ızgarası (başlık ve satır aynı). */
+const LINE_GRID = "xl:grid-cols-[minmax(6.5rem,1.4fr)_repeat(2,minmax(5rem,1fr))_minmax(4.5rem,0.8fr)]";
 
 export function WeekBoard({
   weekStart,
@@ -387,7 +392,7 @@ export function WeekBoard({
           <>
             <div className={cx("hidden border-y border-line px-6 py-3 text-[0.8rem] font-semibold text-ink-3", GRID)}>
               <span>Müşteri</span>
-              <span className="grid grid-cols-[minmax(6rem,1.3fr)_repeat(2,minmax(5rem,1fr))_minmax(4.5rem,0.8fr)] gap-2">
+              <span className={cx("grid gap-2", LINE_GRID)}>
                 <span>Ürün</span>
                 <span>Verilen</span>
                 <span>İade</span>
@@ -503,7 +508,7 @@ function NumberBox({
           }}
           className={cx(
             inputClass,
-            "min-h-[3.25rem] pr-3 pl-11 text-right text-[1.08rem] font-semibold",
+            "min-h-11 py-1.5 pr-3 pl-10 text-right text-[1.02rem] font-semibold",
             readOnly && "bg-transparent shadow-none",
           )}
         />
@@ -581,37 +586,34 @@ function OrderRow({
   return (
     <li
       style={order(index)}
-      className="neu-sm animate-rise rounded-2xl p-4 xl:rounded-none xl:border-b xl:border-line xl:bg-transparent xl:px-6 xl:py-3.5 xl:shadow-none xl:transition-colors xl:hover:bg-brand-soft/30"
+      className="neu-sm animate-rise rounded-2xl p-4 xl:rounded-none xl:border-b xl:border-line xl:bg-transparent xl:px-6 xl:py-2.5 xl:shadow-none xl:transition-colors xl:hover:bg-brand-soft/30"
     >
-      <div className={cx("flex flex-col gap-3", GRID)}>
+      <div className={cx("flex flex-col gap-3 xl:gap-y-0", GRID)}>
         {/* Müşteri */}
-        <div className="flex items-start justify-between gap-3 xl:pt-2.5">
-          <div className="min-w-0">
+        <div className="flex items-center justify-between gap-2 xl:min-h-11">
+          <div className="flex min-w-0 items-center gap-1.5">
             <Link
               href={`/musteriler/${row.customer_id}`}
-              className="block truncate text-[1.02rem] font-semibold text-ink hover:text-brand-deep dark:hover:text-brand"
+              className="truncate text-[1.02rem] font-semibold text-ink hover:text-brand-deep dark:hover:text-brand"
             >
               {row.customer_name}
             </Link>
-            <p className="flex h-5 items-center gap-1.5 text-[0.8rem] text-ink-3">
-              {state === "saving" && <span className="text-ink-2">kaydediliyor…</span>}
-              {state === "saved" && (
-                <span className="animate-pop inline-flex items-center gap-1 font-semibold text-brand-deep dark:text-brand">
-                  <Check size={14} strokeWidth={3} /> Kaydedildi
-                </span>
-              )}
-            </p>
+            {state === "saving" && <Loader2 size={14} className="shrink-0 animate-spin text-ink-3" aria-label="Kaydediliyor" />}
+            {state === "saved" && (
+              <Check size={15} strokeWidth={3} className="animate-pop shrink-0 text-brand-deep dark:text-brand" aria-label="Kaydedildi" />
+            )}
           </div>
-          <span className="xl:hidden">
+          <span className="flex shrink-0 items-center gap-1.5 xl:hidden">
             <BalanceBadge value={rowDelta} kind="delta" />
+            {!readOnly && <AddLineMenu products={missing} disabled={addingLine} onPick={addProduct} />}
           </span>
         </div>
 
         {/* Ürün satırları */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 xl:gap-1.5">
           {row.lines.length === 0 && (
-            <p className="rounded-xl bg-bg-deep/60 px-3 py-2.5 text-[0.85rem] text-ink-2">
-              Ürün satırı yok{readOnly ? "." : " — aşağıdan ürün ekleyin ya da sadece alınan parayı yazın."}
+            <p className="flex min-h-11 items-center rounded-xl bg-bg-deep/60 px-3 text-[0.85rem] text-ink-2">
+              {readOnly || missing.length === 0 ? "Ürün yok — sadece para alındı." : "Ürün yok — sağdaki + ile ekleyin ya da sadece parayı yazın."}
             </p>
           )}
           {row.lines.map((l) => (
@@ -620,30 +622,16 @@ function OrderRow({
               line={l}
               customerName={row.customer_name}
               readOnly={readOnly}
+              removable={row.lines.length > 1}
               onDraft={(p) => onLine(l.id, p)}
               onSaved={(o) => onDraft({ collection: o.collection })}
               onError={() => setState("idle")}
             />
           ))}
-          {!readOnly && missing.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {missing.map((p) => (
-                <button
-                  key={p.product_id}
-                  type="button"
-                  disabled={addingLine}
-                  onClick={() => addProduct(p.product_id)}
-                  className="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-edge-strong px-3 text-[0.8rem] font-semibold text-ink-2 transition-colors hover:border-brand hover:text-brand-deep dark:hover:text-brand"
-                >
-                  <Plus size={14} /> {p.name}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Alınan para */}
-        <div className="xl:pt-0">
+        <div>
           <NumberBox
             label="Alınan para"
             unit="₺"
@@ -681,17 +669,22 @@ function OrderRow({
             </span>
           </div>
 
-          <p className="tnum hidden pt-3 text-right text-[1rem] font-semibold xl:block">{money(rowNet)}</p>
-          <div className="hidden flex-col items-end gap-0.5 pt-2 xl:flex">
+          <p className="tnum hidden min-h-11 items-center justify-end text-[1rem] font-semibold xl:flex">{money(rowNet)}</p>
+          <div className="hidden min-h-11 flex-col items-end justify-center xl:flex">
             <Balance value={rowDelta} />
             <BalanceBadge value={rowDelta} kind="delta" />
           </div>
-          <div className="hidden flex-col items-end gap-0.5 pt-2 xl:flex">
+          <div className="hidden min-h-11 flex-col items-end justify-center xl:flex">
             <Balance value={total} className="text-[1.02rem]" />
             <BalanceBadge value={total} kind="total" />
           </div>
 
-          <div className="shrink-0 xl:block xl:pt-1.5">
+          <div className="flex shrink-0 items-center justify-end gap-1 xl:min-h-11">
+            {!readOnly && (
+              <span className="hidden xl:block">
+                <AddLineMenu products={missing} disabled={addingLine} onPick={addProduct} />
+              </span>
+            )}
             {!readOnly && (
               <button
                 type="button"
@@ -721,11 +714,83 @@ function OrderRow({
   );
 }
 
+/** Satırın en sağındaki "+": müşterinin henüz eklenmemiş ürünlerinden birini ekler. */
+function AddLineMenu({
+  products,
+  disabled,
+  onPick,
+}: {
+  products: CustomerProduct[];
+  disabled: boolean;
+  onPick: (productId: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !(e.target as Element).closest("[data-add-line]")) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+
+  if (products.length === 0) return <span className="hidden w-10 xl:block" aria-hidden />;
+
+  return (
+    <div data-add-line className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={cx(
+          "grid size-10 place-items-center rounded-xl transition-all duration-200",
+          open ? "brand-fill" : "bg-brand-soft text-brand-deep hover:brightness-95 dark:text-brand",
+        )}
+        aria-label="Ürün ekle"
+        title="Ürün ekle"
+      >
+        {disabled ? <Loader2 size={17} className="animate-spin" /> : <Plus size={18} strokeWidth={2.5} />}
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="animate-pop absolute top-full right-0 z-30 mt-1.5 flex w-52 flex-col gap-0.5 rounded-2xl border border-edge bg-surface p-1.5 shadow-[0_18px_40px_-16px_rgba(0,0,0,0.35)]"
+        >
+          <p className="px-2.5 pt-1 pb-1.5 text-[0.72rem] font-semibold text-ink-3">Ürün ekle</p>
+          {products.map((p) => (
+            <button
+              key={p.product_id}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onPick(p.product_id);
+              }}
+              className="flex min-h-10 items-center justify-between gap-3 rounded-xl px-2.5 text-left text-[0.9rem] font-semibold hover:bg-brand-soft"
+            >
+              <span className="truncate">{p.name}</span>
+              <span className="tnum shrink-0 text-[0.78rem] font-medium text-ink-3">{money(p.price)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Bir ürün satırı: ürün · verilen · iade · tutar. Çıkınca kaydeder. */
 function LineRow({
   line,
   customerName,
   readOnly,
+  removable,
   onDraft,
   onSaved,
   onError,
@@ -733,6 +798,7 @@ function LineRow({
   line: BoardLine;
   customerName: string;
   readOnly: boolean;
+  removable: boolean;
   onDraft: (patch: Partial<BoardLine>) => void;
   onSaved: (order: OrderTotals) => void;
   onError: () => void;
@@ -768,31 +834,30 @@ function LineRow({
   const empty = line.delivered_qty === 0 && line.returned_qty === 0;
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 rounded-xl xl:grid-cols-[minmax(6rem,1.3fr)_repeat(2,minmax(5rem,1fr))_minmax(4.5rem,0.8fr)] xl:items-center">
-      <div className="col-span-2 flex items-center justify-between gap-2 xl:col-span-1 xl:block">
+    <div className={cx("grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 xl:items-center", LINE_GRID)}>
+      <div className="col-span-2 flex min-w-0 items-center gap-2 xl:col-span-1">
         <p className="min-w-0 truncate text-[0.9rem] font-semibold">
           {line.product_name}
-          {ok && <Check size={13} strokeWidth={3} className="animate-pop ml-1 inline text-brand-deep dark:text-brand" />}
+          <span className="tnum ml-1.5 text-[0.76rem] font-medium text-ink-3">{money(line.unit_price)}</span>
         </p>
-        <p className="tnum flex items-center gap-2 text-[0.76rem] text-ink-3">
-          {money(line.unit_price)} / {unit}
-          {!readOnly && empty && (
-            <button
-              type="button"
-              disabled={removing}
-              onClick={() =>
-                startRemove(async () => {
-                  const res = await deleteLine(line.id);
-                  if (!res.ok) toast(res.error, "error");
-                })
-              }
-              className="rounded-md px-1.5 text-[0.74rem] font-semibold text-ink-3 hover:bg-debt-soft hover:text-debt"
-              aria-label={`${line.product_name} satırını kaldır`}
-            >
-              Kaldır
-            </button>
-          )}
-        </p>
+        {ok && <Check size={13} strokeWidth={3} className="animate-pop shrink-0 text-brand-deep dark:text-brand" />}
+        {!readOnly && removable && empty && (
+          <button
+            type="button"
+            disabled={removing}
+            onClick={() =>
+              startRemove(async () => {
+                const res = await deleteLine(line.id);
+                if (!res.ok) toast(res.error, "error");
+              })
+            }
+            className="ml-auto grid size-7 shrink-0 place-items-center rounded-md text-ink-3 hover:bg-debt-soft hover:text-debt"
+            aria-label={`${line.product_name} satırını kaldır`}
+            title="Satırı kaldır"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
       <NumberBox
         label="Verilen"
@@ -818,7 +883,7 @@ function LineRow({
         onCommit={commit}
         ariaLabel={`${customerName} ${line.product_name} iade`}
       />
-      <p className="tnum col-span-2 text-right text-[0.85rem] font-semibold text-ink-2 xl:col-span-1">{money(amount)}</p>
+      <p className="tnum hidden text-right text-[0.88rem] font-semibold text-ink-2 xl:block">{money(amount)}</p>
     </div>
   );
 }

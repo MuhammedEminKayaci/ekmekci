@@ -29,7 +29,7 @@ import {
   weekStart,
 } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { CustomerActions, PriceAction, RemoveProduct, type OwnedProduct } from "./customer-actions";
+import { CustomerActions, PriceAction, ProductPrices, type OwnedProduct } from "./customer-actions";
 
 export const metadata: Metadata = { title: "Müşteri" };
 
@@ -138,31 +138,7 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
           >
             Ürünler ve fiyatlar
           </TileTitle>
-          {owned.length === 0 ? (
-            <p className="text-[0.9rem] text-ink-2">Bu müşteriye henüz ürün eklenmedi.</p>
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {owned.map((p) => (
-                <li key={p.product_id} className="rounded-xl bg-bg-deep/60 px-3.5 py-2.5">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="min-w-0 truncate font-semibold">{p.name}</span>
-                    <span className="flex items-center gap-1">
-                      <span className="tnum font-display text-[1.15rem] font-semibold">{money(p.price)}</span>
-                      <RemoveProduct customerId={id} productId={p.product_id} name={p.name} />
-                    </span>
-                  </div>
-                  <p className="text-[0.76rem] text-ink-3">
-                    {p.since ? `${longDate(p.since)} tarihinden beri` : ""}
-                    {p.history.length > 1 &&
-                      ` · önce ${p.history
-                        .slice(1)
-                        .map((h) => money(h.price))
-                        .join(", ")}`}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ProductPrices customerId={id} owned={owned.map((p) => ({ ...p, history: p.history.map((h) => Number(h.price)) }))} />
         </Tile>
 
         <Tile i={3} className="md:col-span-6 lg:col-span-2">

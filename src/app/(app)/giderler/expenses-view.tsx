@@ -75,7 +75,7 @@ export function ExpensesView({
           {expenses.length === 0 ? (
             <p className="rounded-xl bg-bg-deep/60 px-3.5 py-3 text-[0.88rem] text-ink-2">Bu gün gider yazılmadı.</p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="scroll-soft flex flex-col gap-2 lg:max-h-[26rem] lg:overflow-y-auto lg:pr-1">
               {expenses.map((e) => (
                 <ExpenseRow key={e.id} expense={e} where={whereLabel(e)} locked={locked} />
               ))}
