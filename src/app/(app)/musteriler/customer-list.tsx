@@ -15,6 +15,7 @@ export type CustomerItem = {
   type: number;
   address: string | null;
   is_active: boolean;
+  buys_products: boolean | null;
   products: Array<{ product_id: number; name: string; unit: string; price: number | null }>;
   balance: number;
   last_entry_date: string | null;
@@ -181,12 +182,14 @@ export function CustomerList({
                         <TypeChip type={c.type} />
                       </p>
                       <p className="tnum mt-0.5 truncate text-[0.8rem] text-ink-3 md:hidden">
-                        {productsText(c.products)}
+                        {c.buys_products === false ? "Cari (ürün almaz)" : productsText(c.products)}
                         {c.last_entry_date ? ` · son kayıt ${shortDate(c.last_entry_date)}` : ""}
                       </p>
                       {c.address && <p className="hidden truncate text-[0.8rem] text-ink-3 md:block">{c.address}</p>}
                     </div>
-                    <span className="tnum hidden truncate text-right text-[0.88rem] text-ink-2 md:block">{productsText(c.products)}</span>
+                    <span className="tnum hidden truncate text-right text-[0.88rem] text-ink-2 md:block">
+                      {c.buys_products === false ? <span className="rounded-full bg-amber-soft px-2.5 py-1 text-[0.76rem] font-semibold text-amber">Cari · ürün almaz</span> : productsText(c.products)}
+                    </span>
                     <span className="tnum hidden text-right text-ink-2 md:block">
                       {c.last_entry_date ? shortDate(c.last_entry_date) : "—"}
                     </span>

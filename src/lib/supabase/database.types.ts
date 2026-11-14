@@ -286,6 +286,7 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          buys_products: boolean
           created_at: string
           created_by: string | null
           id: number
@@ -298,6 +299,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          buys_products?: boolean
           created_at?: string
           created_by?: string | null
           id?: never
@@ -310,6 +312,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          buys_products?: boolean
           created_at?: string
           created_by?: string | null
           id?: never
@@ -759,6 +762,7 @@ export type Database = {
         Row: {
           address: string | null
           balance: number | null
+          buys_products: boolean | null
           created_at: string | null
           id: number | null
           is_active: boolean | null
@@ -779,6 +783,7 @@ export type Database = {
       create_customer: {
         Args: {
           p_address?: string
+          p_buys_products?: boolean
           p_name: string
           p_note?: string
           p_products: Json

@@ -114,6 +114,7 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
             type: customer.type ?? 1,
             address: customer.address,
             note: customer.note,
+            buys_products: customer.buys_products ?? true,
             is_active: customer.is_active ?? true,
           }}
         />
@@ -138,11 +139,15 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
         <Tile i={2} className="md:col-span-3 lg:col-span-2">
           <TileTitle
             icon={<IconChip icon={Tag} tone="amber" size="sm" />}
-            aside={<PriceAction customerId={id} today={today} owned={owned} addable={addable} />}
+            aside={customer.buys_products === false ? undefined : <PriceAction customerId={id} today={today} owned={owned} addable={addable} />}
           >
             Ürünler ve fiyatlar
           </TileTitle>
+          {customer.buys_products === false ? (
+            <p className="text-[0.9rem] text-ink-2">Ürün almaz — yalnızca cari hesap (giderler ve ödemeler). Kartı düzenleyerek değiştirebilirsiniz.</p>
+          ) : (
           <ProductPrices customerId={id} owned={owned.map((p) => ({ ...p, history: p.history.map((h) => Number(h.price)) }))} />
+          )}
         </Tile>
 
         <Tile i={3} className="md:col-span-6 lg:col-span-2">

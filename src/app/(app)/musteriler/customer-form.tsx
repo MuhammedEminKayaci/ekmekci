@@ -14,6 +14,7 @@ export type CustomerFormValues = {
   type: number;
   address: string | null;
   note: string | null;
+  buys_products?: boolean;
 };
 
 /** Yeni müşteri (fiyatla birlikte) ya da mevcut kart düzenleme. */
@@ -32,6 +33,7 @@ export function CustomerForm({
   const [picked, setPicked] = useState<Record<number, string>>(() =>
     catalog.length ? { [catalog[0].id]: catalog[0].suggested_price ? String(catalog[0].suggested_price).replace(".", ",") : "" } : {},
   );
+  const [buys, setBuys] = useState(initial?.buys_products ?? true);
   const router = useRouter();
   const [type, setType] = useState(initial?.type ?? 1);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +42,8 @@ export function CustomerForm({
 
   function submit(formData: FormData) {
     formData.set("type", String(type));
-    if (!editing) {
+    formData.set("buys_products", buys ? "1" : "0");
+    if (!editing && buys) {
       formData.set(
         "products",
         JSON.stringify(
@@ -98,7 +101,29 @@ export function CustomerForm({
         />
       </Field>
 
-      {!editing && (
+      <button
+        type="button"
+        aria-pressed={buys}
+        onClick={() => setBuys((v) => !v)}
+        className={cx(
+          "flex min-h-14 items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left transition-colors",
+          buys ? "bg-brand-soft ring-1 ring-brand/40" : "neu-sm",
+        )}
+      >
+        <span className={cx("grid size-6 shrink-0 place-items-center rounded-lg", buys ? "brand-fill" : "neu-inset")}>
+          {buys && <Check size={14} strokeWidth={3} />}
+        </span>
+        <span className="min-w-0">
+          <span className="block font-semibold">Ürün alır</span>
+          <span className="block text-[0.78rem] text-ink-3">
+            {buys
+              ? "Ekmek vb. ürün alır; Siparişler'de listelenir."
+              : "Ürün almaz (ör. oduncu): yalnızca cari hesap. Siparişler'de görünmez, giderlerde seçilir."}
+          </span>
+        </span>
+      </button>
+
+      {!editing && buys && (
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1.5 text-[0.85rem] font-semibold text-ink-2">Aldığı ürünler ve fiyatları</legend>
           {catalog.length === 0 && <p className="text-[0.85rem] text-ink-3">Önce Ürünler sayfasından ürün ekleyin.</p>}
@@ -138,10 +163,7 @@ export function CustomerForm({
               </div>
             );
           })}
-          <span className="text-[0.8rem] text-ink-3">
-            Fiyatlar bu müşteriye özeldir; sonradan müşteri kartından değiştirilebilir. Sadece kendisinden alış yaptığınız bir cari
-            (ör. oduncu) için hiçbir ürün seçmeyin.
-          </span>
+          <span className="text-[0.8rem] text-ink-3">Fiyatlar bu müşteriye özeldir; sonradan müşteri kartından değiştirilebilir.</span>
         </fieldset>
       )}
 

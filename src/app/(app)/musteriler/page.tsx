@@ -14,7 +14,7 @@ async function Customers({ searchParams }: { searchParams: Search }) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("customer_overview")
-    .select("id, name, type, address, is_active, products, balance, last_entry_date")
+    .select("id, name, type, address, is_active, buys_products, products, balance, last_entry_date")
     .order("name");
   const { data: catalog } = await supabase
     .from("products")

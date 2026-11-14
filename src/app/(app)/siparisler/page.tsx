@@ -27,7 +27,7 @@ async function Board({ searchParams }: { searchParams: Search }) {
     supabase.rpc("get_week_lines", { p_date: start }),
     supabase
       .from("customer_overview")
-      .select("id, name, type, products, is_active, balance")
+      .select("id, name, type, products, is_active, buys_products, balance")
       .order("name"),
     supabase.from("app_settings").select("lock_past_weeks").maybeSingle(),
     supabase.from("drivers").select("id, name, is_owner, is_active").order("sort_order"),
@@ -91,7 +91,7 @@ async function Board({ searchParams }: { searchParams: Search }) {
         initialDay={day}
         locked={locked}
         rows={boardRows}
-        customers={all.filter((c) => c.is_active).map((c) => ({ id: c.id!, name: c.name!, type: c.type!, products: (c.products ?? []) as CustomerProduct[] })) as BoardCustomer[]}
+        customers={all.filter((c) => c.is_active && c.buys_products !== false).map((c) => ({ id: c.id!, name: c.name!, type: c.type!, products: (c.products ?? []) as CustomerProduct[] })) as BoardCustomer[]}
         balances={balances}
         isAdmin={profile?.isAdmin ?? false}
         drivers={(drivers ?? []) as BoardDriver[]}

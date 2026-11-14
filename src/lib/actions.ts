@@ -129,8 +129,10 @@ export async function createCustomer(formData: FormData): Promise<ActionResult<n
   const { name, type, address, note } = readCustomerForm(formData);
   if (!name) return { ok: false, error: "Müşteri adı gerekli (en çok 120 karakter)." };
   if (address === undefined || note === undefined) return { ok: false, error: "Adres ya da not çok uzun." };
-  const products = readProductPrices(formData.get("products"));
+  const buys = formData.get("buys_products") !== "0";
+  const products = buys ? readProductPrices(formData.get("products")) : [];
   if (!products) return { ok: false, error: "Seçilen ürünlerin fiyatını girin." };
+  if (buys && products.length === 0) return { ok: false, error: "En az bir ürün seçin ya da “Ürün alır” tikini kaldırın." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_customer", {
@@ -139,6 +141,7 @@ export async function createCustomer(formData: FormData): Promise<ActionResult<n
     p_products: products,
     p_address: address ?? undefined,
     p_note: note ?? undefined,
+    p_buys_products: buys,
   });
   if (error) return { ok: false, error: friendly(error) };
 
@@ -153,7 +156,9 @@ export async function updateCustomer(id: number, formData: FormData): Promise<Ac
   if (address === undefined || note === undefined) return { ok: false, error: "Adres ya da not çok uzun." };
 
   const supabase = await createClient();
-  const { data, error } = await supabase.from("customers").update({ name, type, address, note }).eq("id", id).select("id");
+  const buysRaw = formData.get("buys_products");
+  const patch = buysRaw === "0" || buysRaw === "1" ? { name, type, address, note, buys_products: buysRaw === "1" } : { name, type, address, note };
+  const { data, error } = await supabase.from("customers").update(patch).eq("id", id).select("id");
   if (error) return { ok: false, error: friendly(error) };
   if (!data?.length) return NO_PERMISSION;
 
