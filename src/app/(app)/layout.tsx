@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { LiveRefresh } from "@/components/live-refresh";
 import { CircleAlert, LogOut } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { Credit } from "@/components/credit";
@@ -92,6 +93,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
         <TabBar />
       </Suspense>
       <Credit withTabBar />
+      <LiveRefresh />
     </div>
   );
 }

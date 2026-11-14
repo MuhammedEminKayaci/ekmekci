@@ -10,7 +10,6 @@ import {
   IconChip,
   Segmented,
   Skeleton,
-  Stat,
   Tile,
   TileTitle,
   TypeChip,
@@ -30,7 +29,7 @@ import {
   weekStart,
 } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { CustomerActions, PriceAction } from "./customer-actions";
+import { CustomerActions, PriceAction, RemoveProduct, type OwnedProduct } from "./customer-actions";
 
 export const metadata: Metadata = { title: "Müşteri" };
 
@@ -66,19 +65,25 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
   const today = todayTR();
   const [from, to] = rangeFor(group, today);
 
-  const [{ data: customer }, { data: prices }, { data: statement }] = await Promise.all([
+  const [{ data: customer }, { data: prices }, { data: catalog }, { data: statement }] = await Promise.all([
     supabase.from("customer_overview").select("*").eq("id", id).maybeSingle(),
     supabase
       .from("customer_prices")
-      .select("id, price, valid_from")
+      .select("id, price, valid_from, product_id")
       .eq("customer_id", id)
       .order("valid_from", { ascending: false }),
+    supabase.from("products").select("id, name, unit, suggested_price").eq("is_active", true).order("sort_order"),
     supabase.rpc("get_customer_statement", { p_customer_id: id, p_from: from, p_to: to, p_group: group }),
   ]);
 
   if (!customer || customer.id == null) notFound();
 
   const rows = [...(statement ?? [])].reverse();
+  const owned = ((customer.products ?? []) as unknown as OwnedProduct[]).map((p) => ({
+    ...p,
+    history: (prices ?? []).filter((h) => h.product_id === p.product_id).slice(0, 4),
+  }));
+  const addable = (catalog ?? []).filter((c) => !owned.some((o) => o.product_id === c.id));
 
   return (
     <>
@@ -127,20 +132,33 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
         </Tile>
 
         <Tile i={2} className="md:col-span-3 lg:col-span-2">
-          <TileTitle icon={<IconChip icon={Tag} tone="amber" size="sm" />} aside={<PriceAction customerId={id} today={today} />}>
-            Ekmek fiyatı
+          <TileTitle
+            icon={<IconChip icon={Tag} tone="amber" size="sm" />}
+            aside={<PriceAction customerId={id} today={today} owned={owned} addable={addable} />}
+          >
+            Ürünler ve fiyatlar
           </TileTitle>
-          <Stat
-            label="Şu an"
-            value={money(customer.current_price)}
-            hint={customer.price_since ? `${longDate(customer.price_since)} tarihinden beri` : undefined}
-          />
-          {prices && prices.length > 1 && (
-            <ul className="mt-4 flex flex-col gap-1.5 border-t border-line pt-3">
-              {prices.slice(0, 5).map((p) => (
-                <li key={p.id} className="tnum flex justify-between text-[0.85rem]">
-                  <span className="text-ink-2">{longDate(p.valid_from)}</span>
-                  <span className="font-semibold">{money(p.price)}</span>
+          {owned.length === 0 ? (
+            <p className="text-[0.9rem] text-ink-2">Bu müşteriye henüz ürün eklenmedi.</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {owned.map((p) => (
+                <li key={p.product_id} className="rounded-xl bg-bg-deep/60 px-3.5 py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate font-semibold">{p.name}</span>
+                    <span className="flex items-center gap-1">
+                      <span className="tnum font-display text-[1.15rem] font-semibold">{money(p.price)}</span>
+                      <RemoveProduct customerId={id} productId={p.product_id} name={p.name} />
+                    </span>
+                  </div>
+                  <p className="text-[0.76rem] text-ink-3">
+                    {p.since ? `${longDate(p.since)} tarihinden beri` : ""}
+                    {p.history.length > 1 &&
+                      ` · önce ${p.history
+                        .slice(1)
+                        .map((h) => money(h.price))
+                        .join(", ")}`}
+                  </p>
                 </li>
               ))}
             </ul>

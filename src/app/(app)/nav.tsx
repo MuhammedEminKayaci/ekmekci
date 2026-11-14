@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChartColumn, ClipboardList, LayoutGrid, Store, Users } from "lucide-react";
+import { ChartColumn, ClipboardList, LayoutGrid, Package, Store, Users } from "lucide-react";
 import { cx } from "@/components/ui";
 
 const ITEMS = [
@@ -10,6 +10,7 @@ const ITEMS = [
   { href: "/siparisler", label: "Siparişler", hint: "Ekmek ve tahsilat gir", icon: ClipboardList },
   { href: "/tezgah", label: "Tezgah", hint: "Kasa ve gün sonu", icon: Store },
   { href: "/musteriler", label: "Müşteriler", hint: "Kartlar ve bakiyeler", icon: Users },
+  { href: "/urunler", label: "Ürünler", hint: "Gün, hafta, ay satışları", icon: Package },
   { href: "/rapor", label: "Hafta raporu", hint: "Haftalık toplamlar", icon: ChartColumn },
 ] as const;
 
@@ -83,7 +84,7 @@ function TabBarView({ isActive }: { isActive: IsActive }) {
       aria-label="Ana menü"
       className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden"
     >
-      <div className="neu mx-auto grid max-w-xl grid-cols-5 gap-1 rounded-[1.5rem] p-1.5">
+      <div className="neu mx-auto grid max-w-xl grid-cols-6 gap-0.5 rounded-[1.5rem] p-1.5">
         {ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isActive(href);
           return (
@@ -92,7 +93,7 @@ function TabBarView({ isActive }: { isActive: IsActive }) {
               href={href}
               aria-current={active ? "page" : undefined}
               className={cx(
-                "flex min-h-[3.75rem] min-w-0 flex-col items-center justify-center gap-1 rounded-[1.1rem] text-[0.68rem] font-semibold xs:text-[0.72rem] transition-all duration-300 ease-out",
+                "flex min-h-[3.75rem] min-w-0 flex-col items-center justify-center gap-1 rounded-[1.1rem] text-[0.62rem] font-semibold xs:text-[0.68rem] transition-all duration-300 ease-out",
                 active ? "brand-fill" : "text-ink-2 active:scale-95",
               )}
             >

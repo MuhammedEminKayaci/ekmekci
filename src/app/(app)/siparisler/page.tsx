@@ -5,7 +5,7 @@ import { addDays, isISODate, todayTR, weekDays, weekStart } from "@/lib/format";
 import { getSessionProfile } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import type { DayExpense } from "./driver-day";
-import { WeekBoard, type BoardCustomer, type BoardDriver, type BoardRow } from "./week-board";
+import { WeekBoard, type BoardCustomer, type BoardDriver, type BoardLine, type BoardRow, type CustomerProduct } from "./week-board";
 
 export const metadata: Metadata = { title: "Siparişler" };
 
@@ -22,11 +22,12 @@ async function Board({ searchParams }: { searchParams: Search }) {
 
   const end = addDays(start, 6);
   const profile = await getSessionProfile();
-  const [{ data: rows }, { data: customers }, { data: settings }, { data: drivers }, { data: expenses }, { data: driverDays }] = await Promise.all([
+  const [{ data: rows }, { data: lines }, { data: customers }, { data: settings }, { data: drivers }, { data: expenses }, { data: driverDays }] = await Promise.all([
     supabase.rpc("get_week_board", { p_date: start }),
+    supabase.rpc("get_week_lines", { p_date: start }),
     supabase
       .from("customer_overview")
-      .select("id, name, type, current_price, is_active, balance")
+      .select("id, name, type, products, is_active, balance")
       .order("name"),
     supabase.from("app_settings").select("lock_past_weeks").maybeSingle(),
     supabase.from("drivers").select("id, name, is_owner, is_active").order("sort_order"),
@@ -43,6 +44,33 @@ async function Board({ searchParams }: { searchParams: Search }) {
   const hrefFor = (offset: number) => `/siparisler?hafta=${addDays(start, offset * 7)}`;
   const locked = (settings?.lock_past_weeks ?? true) && start < currentWeek;
   const all = customers ?? [];
+  // Sipariş + ürün satırları
+  const linesByOrder = new Map<number, BoardLine[]>();
+  for (const l of lines ?? []) {
+    const list = linesByOrder.get(l.order_id) ?? [];
+    list.push({
+      id: l.id,
+      product_id: l.product_id,
+      product_name: l.product_name,
+      product_unit: l.product_unit,
+      delivered_qty: l.delivered_qty,
+      returned_qty: l.returned_qty,
+      unit_price: Number(l.unit_price),
+    });
+    linesByOrder.set(l.order_id, list);
+  }
+  const boardRows: BoardRow[] = (rows ?? []).map((r) => ({
+    id: r.id,
+    customer_id: r.customer_id,
+    customer_name: r.customer_name,
+    customer_type: r.customer_type,
+    driver_id: r.driver_id,
+    entry_date: r.entry_date,
+    sort_order: r.sort_order,
+    collection: Number(r.collection),
+    is_locked: r.is_locked,
+    lines: linesByOrder.get(r.id) ?? [],
+  }));
   // Müşterinin bütün geçmişiyle güncel toplam hesabı (+ borç, − alacak).
   const balances = Object.fromEntries(all.map((c) => [c.id!, Number(c.balance ?? 0)]));
 
@@ -62,8 +90,8 @@ async function Board({ searchParams }: { searchParams: Search }) {
         today={today}
         initialDay={day}
         locked={locked}
-        rows={(rows ?? []) as BoardRow[]}
-        customers={all.filter((c) => c.is_active) as BoardCustomer[]}
+        rows={boardRows}
+        customers={all.filter((c) => c.is_active).map((c) => ({ id: c.id!, name: c.name!, type: c.type!, products: (c.products ?? []) as CustomerProduct[] })) as BoardCustomer[]}
         balances={balances}
         isAdmin={profile?.isAdmin ?? false}
         drivers={(drivers ?? []) as BoardDriver[]}

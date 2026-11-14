@@ -25,6 +25,12 @@ function friendly(err: PgError): string {
   if (err.code === "23505" && err.message.includes("drivers_name_unique")) {
     return "Bu isimde bir dağıtıcı zaten var.";
   }
+  if (err.code === "23505" && err.message.includes("products_name_unique")) {
+    return "Bu isimde bir ürün zaten var.";
+  }
+  if (err.code === "23505" && err.message.includes("order_lines_order_product")) {
+    return "Bu ürün bu müşterinin satırında zaten var.";
+  }
   if (err.code === "23505" && err.message.includes("orders_customer_day")) {
     return "Bu müşteri o gün bu dağıtıcının listesinde zaten var.";
   }
@@ -86,19 +92,42 @@ function readCustomerForm(formData: FormData) {
   return { name, type, address, note };
 }
 
+/** Form alanı "products": [{"product_id": 1, "price": 45}] (JSON). */
+function readProductPrices(raw: FormDataEntryValue | null): Array<{ product_id: number; price: number }> | null {
+  if (typeof raw !== "string" || raw.length > 5000) return null;
+  let list: unknown;
+  try {
+    list = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(list) || list.length === 0 || list.length > 50) return null;
+  const out: Array<{ product_id: number; price: number }> = [];
+  const seen = new Set<number>();
+  for (const item of list) {
+    if (typeof item !== "object" || item === null) return null;
+    const { product_id, price } = item as { product_id: unknown; price: unknown };
+    const value = moneyValue(price, 99_999);
+    if (!isId(product_id) || value == null || value <= 0 || seen.has(product_id)) return null;
+    seen.add(product_id);
+    out.push({ product_id, price: value });
+  }
+  return out;
+}
+
 export async function createCustomer(formData: FormData): Promise<ActionResult<number>> {
   if (!(formData instanceof FormData)) return BAD_INPUT;
   const { name, type, address, note } = readCustomerForm(formData);
   if (!name) return { ok: false, error: "Müşteri adı gerekli (en çok 120 karakter)." };
   if (address === undefined || note === undefined) return { ok: false, error: "Adres ya da not çok uzun." };
-  const price = moneyValue(formData.get("price"), 99_999);
-  if (price == null || price <= 0) return { ok: false, error: "Geçerli bir ekmek fiyatı girin." };
+  const products = readProductPrices(formData.get("products"));
+  if (!products) return { ok: false, error: "En az bir ürün seçip fiyatını girin." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_customer", {
     p_type: type,
     p_name: name,
-    p_price: price,
+    p_products: products,
     p_address: address ?? undefined,
     p_note: note ?? undefined,
   });
@@ -135,8 +164,11 @@ export async function setCustomerActive(id: number, active: boolean): Promise<Ac
   return { ok: true };
 }
 
+/** Müşteriye ürün ekler ya da ürünün fiyatını değiştirir (form: product_id, price, valid_from). */
 export async function setCustomerPrice(id: number, formData: FormData): Promise<ActionResult> {
   if (!isId(id) || !(formData instanceof FormData)) return BAD_INPUT;
+  const productId = Number(formData.get("product_id"));
+  if (!isId(productId)) return { ok: false, error: "Ürün seçin." };
   const price = moneyValue(formData.get("price"), 99_999);
   const validFrom = String(formData.get("valid_from") ?? "");
   if (price == null || price <= 0) return { ok: false, error: "Geçerli bir fiyat girin." };
@@ -145,10 +177,87 @@ export async function setCustomerPrice(id: number, formData: FormData): Promise<
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_customer_price", {
     p_customer_id: id,
+    p_product_id: productId,
     p_price: price,
     p_valid_from: validFrom,
   });
   if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true };
+}
+
+/** Ürünü müşterinin listesinden çıkarır (geçmiş satışlar ve fiyat geçmişi korunur). */
+export async function removeCustomerProduct(customerId: number, productId: number): Promise<ActionResult> {
+  if (!isId(customerId) || !isId(productId)) return BAD_INPUT;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("customer_products")
+    .update({ is_active: false })
+    .eq("customer_id", customerId)
+    .eq("product_id", productId)
+    .select("id");
+  if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
+
+  refresh();
+  return { ok: true };
+}
+
+// --- Ürünler (yalnızca yönetici) ------------------------------------------------
+
+export type ProductInput = { name: string; unit: string; suggested_price: number | null };
+
+function readProduct(input: unknown): { name: string; unit: string; suggested_price: number | null } | null {
+  if (typeof input !== "object" || input === null) return null;
+  const { name, unit, suggested_price } = input as ProductInput;
+  const n = text(name, 60);
+  const u = text(unit, 12) ?? "adet";
+  const price = suggested_price == null ? null : moneyValue(suggested_price, 99_999);
+  if (!n || u === undefined || (suggested_price != null && (price == null || price <= 0))) return null;
+  return { name: n, unit: u, suggested_price: price };
+}
+
+export async function createProduct(input: ProductInput): Promise<ActionResult> {
+  const p = readProduct(input);
+  if (!p) return { ok: false, error: "Ürün adı gerekli; birim ve öneri fiyatı geçerli olmalı." };
+
+  const supabase = await createClient();
+  const { data: last } = await supabase
+    .from("products")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const { error } = await supabase.from("products").insert({ ...p, sort_order: (last?.sort_order ?? 0) + 1 });
+  if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true };
+}
+
+export async function updateProduct(id: number, input: ProductInput): Promise<ActionResult> {
+  if (!isId(id)) return BAD_INPUT;
+  const p = readProduct(input);
+  if (!p) return { ok: false, error: "Ürün adı gerekli; birim ve öneri fiyatı geçerli olmalı." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("products").update(p).eq("id", id).select("id");
+  if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
+
+  refresh();
+  return { ok: true };
+}
+
+export async function setProductActive(id: number, active: boolean): Promise<ActionResult> {
+  if (!isId(id) || typeof active !== "boolean") return BAD_INPUT;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("products").update({ is_active: active }).eq("id", id).select("id");
+  if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
 
   refresh();
   return { ok: true };
@@ -191,13 +300,32 @@ export async function addCustomersToDay(
     .maybeSingle();
   const base = last?.sort_order ?? 0;
 
-  const { error } = await supabase
+  const { data: created, error } = await supabase
     .from("orders")
     .upsert(
       ids.map((customer_id, i) => ({ customer_id, entry_date: date, driver_id: driver, sort_order: base + i + 1 })),
       { onConflict: "customer_id,entry_date,driver_id", ignoreDuplicates: true },
-    );
+    )
+    .select("id, customer_id");
   if (error) return { ok: false, error: friendly(error) };
+
+  // Yeni eklenen her müşteriye aldığı ürünlerin satırları hazır gelsin.
+  if (created?.length) {
+    const { data: cps } = await supabase
+      .from("customer_products")
+      .select("customer_id, product_id, products!inner(is_active)")
+      .in("customer_id", created.map((o) => o.customer_id))
+      .eq("is_active", true)
+      .eq("products.is_active", true);
+    const byCustomer = new Map(created.map((o) => [o.customer_id, o.id]));
+    const lines = (cps ?? [])
+      .filter((cp) => byCustomer.has(cp.customer_id))
+      .map((cp) => ({ order_id: byCustomer.get(cp.customer_id)!, product_id: cp.product_id }));
+    if (lines.length) {
+      const { error: lineErr } = await supabase.from("order_lines").insert(lines);
+      if (lineErr) return { ok: false, error: friendly(lineErr) };
+    }
+  }
 
   refresh();
   return { ok: true };
@@ -245,34 +373,85 @@ export async function copyDayFromLastWeek(date: string, driverId?: number): Prom
   return res.ok ? { ok: true, data: prev.length } : res;
 }
 
-export type OrderPatch = { delivered_qty: number; returned_qty: number; collection: number };
-
-export type SavedOrder = OrderPatch & {
-  unit_price: number;
+/** Siparişin güncel toplamları (satırlar ve tahsilat değiştikçe veri tabanı yeniden hesaplar). */
+export type OrderTotals = {
+  delivered_qty: number;
+  returned_qty: number;
   net_amount: number;
+  collection: number;
   balance_delta: number;
 };
 
-export async function saveOrder(id: number, patch: OrderPatch): Promise<ActionResult<SavedOrder>> {
-  if (!isId(id) || typeof patch !== "object" || patch === null) return BAD_INPUT;
-  const delivered = qtyValue(patch.delivered_qty);
-  const returned = qtyValue(patch.returned_qty);
-  const collection = moneyValue(patch.collection);
-  if (delivered == null || returned == null || collection == null) {
-    return { ok: false, error: "Girilen değer izin verilen aralığın dışında." };
-  }
+const ORDER_TOTALS = "delivered_qty, returned_qty, net_amount, collection, balance_delta";
+
+/** Müşterinin o gün verdiği parayı kaydeder. */
+export async function saveCollection(orderId: number, collection: number): Promise<ActionResult<OrderTotals>> {
+  if (!isId(orderId)) return BAD_INPUT;
+  const value = moneyValue(collection);
+  if (value == null) return { ok: false, error: "Girilen değer izin verilen aralığın dışında." };
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("orders")
-    .update({ delivered_qty: delivered, returned_qty: returned, collection })
-    .eq("id", id)
-    .select("delivered_qty, returned_qty, collection, unit_price, net_amount, balance_delta")
+    .update({ collection: value })
+    .eq("id", orderId)
+    .select(ORDER_TOTALS)
     .maybeSingle();
   if (error) return { ok: false, error: friendly(error) };
   if (!data) return NO_PERMISSION;
 
-  return { ok: true, data: data as SavedOrder };
+  return { ok: true, data: data as OrderTotals };
+}
+
+export type SavedLine = { delivered_qty: number; returned_qty: number; unit_price: number; net_amount: number };
+
+/** Ürün satırındaki verilen/iade adedini kaydeder; satırı ve siparişin yeni toplamlarını döndürür. */
+export async function saveLine(
+  lineId: number,
+  delivered: number,
+  returned: number,
+): Promise<ActionResult<{ line: SavedLine; order: OrderTotals }>> {
+  if (!isId(lineId)) return BAD_INPUT;
+  const d = qtyValue(delivered);
+  const r = qtyValue(returned);
+  if (d == null || r == null) return { ok: false, error: "Girilen değer izin verilen aralığın dışında." };
+
+  const supabase = await createClient();
+  const { data: line, error } = await supabase
+    .from("order_lines")
+    .update({ delivered_qty: d, returned_qty: r })
+    .eq("id", lineId)
+    .select("order_id, delivered_qty, returned_qty, unit_price, net_amount")
+    .maybeSingle();
+  if (error) return { ok: false, error: friendly(error) };
+  if (!line) return NO_PERMISSION;
+
+  const { data: order } = await supabase.from("orders").select(ORDER_TOTALS).eq("id", line.order_id).maybeSingle();
+  return { ok: true, data: { line: line as SavedLine, order: order as OrderTotals } };
+}
+
+/** Siparişe müşterinin aldığı bir ürünün satırını ekler. */
+export async function addLine(orderId: number, productId: number): Promise<ActionResult> {
+  if (!isId(orderId) || !isId(productId)) return BAD_INPUT;
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("order_lines").insert({ order_id: orderId, product_id: productId });
+  if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true };
+}
+
+export async function deleteLine(lineId: number): Promise<ActionResult> {
+  if (!isId(lineId)) return BAD_INPUT;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("order_lines").delete().eq("id", lineId).select("id");
+  if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
+
+  refresh();
+  return { ok: true };
 }
 
 export async function deleteOrder(id: number): Promise<ActionResult> {

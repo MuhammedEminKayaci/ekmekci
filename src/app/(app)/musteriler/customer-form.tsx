@@ -3,7 +3,9 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
+import { Check } from "lucide-react";
 import { Field, buttonClass, cx, inputClass } from "@/components/ui";
+import { parseAmount } from "@/lib/format";
 import { createCustomer, updateCustomer } from "@/lib/actions";
 
 export type CustomerFormValues = {
@@ -15,13 +17,21 @@ export type CustomerFormValues = {
 };
 
 /** Yeni müşteri (fiyatla birlikte) ya da mevcut kart düzenleme. */
+export type CatalogProduct = { id: number; name: string; unit: string; suggested_price: number | null };
+
 export function CustomerForm({
   initial,
+  catalog = [],
   onDone,
 }: {
   initial?: CustomerFormValues;
+  catalog?: CatalogProduct[];
   onDone?: () => void;
 }) {
+  // Yeni müşteride: hangi ürünleri alıyor ve her birinin fiyatı. İlk ürün (Ekmek) hazır seçili.
+  const [picked, setPicked] = useState<Record<number, string>>(() =>
+    catalog.length ? { [catalog[0].id]: catalog[0].suggested_price ? String(catalog[0].suggested_price).replace(".", ",") : "" } : {},
+  );
   const router = useRouter();
   const [type, setType] = useState(initial?.type ?? 1);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +40,14 @@ export function CustomerForm({
 
   function submit(formData: FormData) {
     formData.set("type", String(type));
+    if (!editing) {
+      formData.set(
+        "products",
+        JSON.stringify(
+          Object.entries(picked).map(([id, price]) => ({ product_id: Number(id), price: parseAmount(price) ?? 0 })),
+        ),
+      );
+    }
     start(async () => {
       const res = editing ? await updateCustomer(initial!.id!, formData) : await createCustomer(formData);
       if (!res.ok) {
@@ -81,9 +99,47 @@ export function CustomerForm({
       </Field>
 
       {!editing && (
-        <Field label="Ekmek fiyatı (₺)" hint="Fiyatı daha sonra müşteri kartından değiştirebilirsiniz; eski satışlar eski fiyatta kalır.">
-          <input name="price" required inputMode="decimal" placeholder="Örn. 40" autoComplete="off" className={inputClass} />
-        </Field>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1.5 text-[0.85rem] font-semibold text-ink-2">Aldığı ürünler ve fiyatları</legend>
+          {catalog.length === 0 && <p className="text-[0.85rem] text-ink-3">Önce Ürünler sayfasından ürün ekleyin.</p>}
+          {catalog.map((p) => {
+            const on = p.id in picked;
+            return (
+              <div key={p.id} className={cx("flex items-center gap-3 rounded-2xl p-2 pl-3", on ? "bg-brand-soft ring-1 ring-brand/40" : "neu-sm")}>
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() =>
+                    setPicked((prev) => {
+                      const next = { ...prev };
+                      if (on) delete next[p.id];
+                      else next[p.id] = p.suggested_price ? String(p.suggested_price).replace(".", ",") : "";
+                      return next;
+                    })
+                  }
+                  className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 text-left font-semibold"
+                >
+                  <span className={cx("grid size-6 shrink-0 place-items-center rounded-full", on ? "brand-fill" : "neu-inset")}>
+                    {on && <Check size={14} strokeWidth={3} />}
+                  </span>
+                  <span className="truncate">{p.name}</span>
+                </button>
+                {on && (
+                  <input
+                    value={picked[p.id]}
+                    onChange={(e) => setPicked((prev) => ({ ...prev, [p.id]: e.target.value.replace(/[^\d.,]/g, "") }))}
+                    inputMode="decimal"
+                    placeholder="Fiyat ₺"
+                    aria-label={`${p.name} fiyatı`}
+                    required
+                    className={cx(inputClass, "max-w-32 text-right font-semibold")}
+                  />
+                )}
+              </div>
+            );
+          })}
+          <span className="text-[0.8rem] text-ink-3">Fiyatlar bu müşteriye özeldir; sonradan müşteri kartından değiştirilebilir.</span>
+        </fieldset>
       )}
 
       <Field label="Adres (isteğe bağlı)">

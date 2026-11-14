@@ -11,7 +11,7 @@ type Row = {
   driver_id: number;
   delivered_qty: number;
   returned_qty: number;
-  unit_price: number;
+  net: number;
   collection: number;
 };
 
@@ -47,7 +47,7 @@ export function AllView({
     c.delivered += r.delivered_qty;
     c.returned += r.returned_qty;
     c.collection += r.collection;
-    c.net += (r.delivered_qty - r.returned_qty) * r.unit_price;
+    c.net += r.net;
     c.parts.push({ driver: r.driver_id, qty: r.delivered_qty });
     byCustomer.set(r.customer_id, c);
   }

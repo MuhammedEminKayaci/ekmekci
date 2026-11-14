@@ -7,7 +7,7 @@ import { AnimatedNumber } from "@/components/animated-number";
 import { Sheet } from "@/components/sheet";
 import { Balance, BalanceBadge, Button, Empty, PageHeader, Stat, TypeChip, cx, inputClass, order } from "@/components/ui";
 import { balanceTone, money, shortDate } from "@/lib/format";
-import { CustomerForm } from "./customer-form";
+import { CustomerForm, type CatalogProduct } from "./customer-form";
 
 export type CustomerItem = {
   id: number;
@@ -15,7 +15,7 @@ export type CustomerItem = {
   type: number;
   address: string | null;
   is_active: boolean;
-  current_price: number | null;
+  products: Array<{ product_id: number; name: string; unit: string; price: number | null }>;
   balance: number;
   last_entry_date: string | null;
 };
@@ -30,9 +30,22 @@ const FILTERS: Array<{ value: Filter; label: string }> = [
 ];
 
 const ROW_GRID =
-  "md:grid md:grid-cols-[minmax(12rem,2fr)_minmax(6rem,0.8fr)_minmax(7rem,0.9fr)_minmax(10rem,1.1fr)_1.5rem] md:items-center md:gap-4";
+  "md:grid md:grid-cols-[minmax(12rem,1.8fr)_minmax(9rem,1.4fr)_minmax(6rem,0.7fr)_minmax(10rem,1fr)_1.5rem] md:items-center md:gap-4";
 
-export function CustomerList({ customers, openNew = false }: { customers: CustomerItem[]; openNew?: boolean }) {
+function productsText(list: CustomerItem["products"]) {
+  if (!list?.length) return "Ürün yok";
+  return list.map((p) => `${p.name} ${money(p.price)}`).join(" · ");
+}
+
+export function CustomerList({
+  customers,
+  catalog,
+  openNew = false,
+}: {
+  customers: CustomerItem[];
+  catalog: CatalogProduct[];
+  openNew?: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("active");
   const [creating, setCreating] = useState(openNew);
@@ -146,7 +159,7 @@ export function CustomerList({ customers, openNew = false }: { customers: Custom
           <>
             <div className={cx("hidden border-y border-line px-6 py-3 text-[0.8rem] font-semibold text-ink-3", ROW_GRID)}>
               <span>Müşteri</span>
-              <span className="text-right">Ekmek fiyatı</span>
+              <span className="text-right">Ürünler ve fiyatlar</span>
               <span className="text-right">Son kayıt</span>
               <span className="text-right">Hesap</span>
               <span />
@@ -168,12 +181,12 @@ export function CustomerList({ customers, openNew = false }: { customers: Custom
                         <TypeChip type={c.type} />
                       </p>
                       <p className="tnum mt-0.5 truncate text-[0.8rem] text-ink-3 md:hidden">
-                        Ekmek {money(c.current_price)}
+                        {productsText(c.products)}
                         {c.last_entry_date ? ` · son kayıt ${shortDate(c.last_entry_date)}` : ""}
                       </p>
                       {c.address && <p className="hidden truncate text-[0.8rem] text-ink-3 md:block">{c.address}</p>}
                     </div>
-                    <span className="tnum hidden text-right text-ink-2 md:block">{money(c.current_price)}</span>
+                    <span className="tnum hidden truncate text-right text-[0.88rem] text-ink-2 md:block">{productsText(c.products)}</span>
                     <span className="tnum hidden text-right text-ink-2 md:block">
                       {c.last_entry_date ? shortDate(c.last_entry_date) : "—"}
                     </span>
@@ -191,7 +204,7 @@ export function CustomerList({ customers, openNew = false }: { customers: Custom
       </section>
 
       <Sheet open={creating} onClose={closeCreate} title="Yeni müşteri">
-        <CustomerForm onDone={closeCreate} />
+        <CustomerForm catalog={catalog} onDone={closeCreate} />
       </Sheet>
     </>
   );

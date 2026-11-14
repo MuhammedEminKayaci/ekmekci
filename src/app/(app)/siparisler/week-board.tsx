@@ -26,7 +26,7 @@ import { DayOrder } from "./day-order";
 import { DriverDay, type DayExpense } from "./driver-day";
 import { DriversManage } from "./drivers-manage";
 import { downloadDayList } from "./day-export";
-import { addCustomersToDay, copyDayFromLastWeek, deleteOrder, saveOrder } from "@/lib/actions";
+import { addCustomersToDay, addLine, copyDayFromLastWeek, deleteLine, deleteOrder, saveCollection, saveLine, type OrderTotals } from "@/lib/actions";
 import { balanceTone, longDate, money, parseAmount, qty, weekdayLong, weekdayShort } from "@/lib/format";
 
 export type BoardRow = {
@@ -37,26 +37,41 @@ export type BoardRow = {
   driver_id: number;
   entry_date: string;
   sort_order: number;
+  collection: number;
+  is_locked: boolean;
+  lines: BoardLine[];
+};
+
+export type BoardLine = {
+  id: number;
+  product_id: number;
+  product_name: string;
+  product_unit: string;
   delivered_qty: number;
   returned_qty: number;
   unit_price: number;
-  collection: number;
-  is_locked: boolean;
 };
 
-export type BoardCustomer = { id: number; name: string; type: number; current_price: number | null };
+export type CustomerProduct = { product_id: number; name: string; unit: string; price: number | null };
+export type BoardCustomer = { id: number; name: string; type: number; products: CustomerProduct[] };
 export type BoardDriver = { id: number; name: string; is_owner: boolean; is_active: boolean };
 type DriverDayRow = { entry_date: string; driver_id: number; handed_over: number | null };
 
-const net = (r: BoardRow) => (r.delivered_qty - r.returned_qty) * r.unit_price;
+const lineNet = (l: BoardLine) => (l.delivered_qty - l.returned_qty) * l.unit_price;
+const net = (r: BoardRow) => r.lines.reduce((a, l) => a + lineNet(l), 0);
+const delivered = (r: BoardRow) => r.lines.reduce((a, l) => a + l.delivered_qty, 0);
+const returned = (r: BoardRow) => r.lines.reduce((a, l) => a + l.returned_qty, 0);
 const delta = (r: BoardRow) => net(r) - r.collection;
+
+/** Özet bileşenleri (Hepsi, gün sonu) için satırın toplamları. */
+const summary = (r: BoardRow) => ({ ...r, delivered_qty: delivered(r), returned_qty: returned(r), net: net(r) });
 
 function sum(rows: BoardRow[], f: (r: BoardRow) => number) {
   return rows.reduce((acc, r) => acc + f(r), 0);
 }
 
 const GRID =
-  "xl:grid xl:grid-cols-[minmax(9rem,1.4fr)_repeat(3,minmax(6rem,1fr))_minmax(5.5rem,0.8fr)_minmax(7.5rem,1fr)_minmax(8rem,1fr)_2.5rem] xl:items-center xl:gap-3 2xl:gap-4";
+  "xl:grid xl:grid-cols-[minmax(8rem,1fr)_minmax(19rem,2.6fr)_minmax(7rem,0.9fr)_minmax(5.5rem,0.7fr)_minmax(7rem,0.9fr)_minmax(7.5rem,0.9fr)_2.5rem] xl:items-start xl:gap-3 2xl:gap-4";
 
 export function WeekBoard({
   weekStart,
@@ -141,14 +156,24 @@ export function WeekBoard({
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }
 
+  function patchLine(orderId: number, lineId: number, patch: Partial<BoardLine>) {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === orderId ? { ...r, lines: r.lines.map((l) => (l.id === lineId ? { ...l, ...patch } : l)) } : r,
+      ),
+    );
+  }
+
+  const customerProducts = useMemo(() => new Map(customers.map((c) => [c.id, c.products])), [customers]);
+
   function exportList() {
     startExport(async () => {
       try {
         const list = new Map<number, { name: string; delivered: number; returned: number; collection: number }>();
         for (const r of dayRows) {
           const c = list.get(r.customer_id) ?? { name: r.customer_name, delivered: 0, returned: 0, collection: 0 };
-          c.delivered += r.delivered_qty;
-          c.returned += r.returned_qty;
+          c.delivered += delivered(r);
+          c.returned += returned(r);
           c.collection += r.collection;
           list.set(r.customer_id, c);
         }
@@ -324,7 +349,7 @@ export function WeekBoard({
 
         {tab === "all" && !ordering ? (
           <AllView
-            rows={allDayRows}
+            rows={allDayRows.map(summary)}
             drivers={drivers}
             expenses={dayExpenses}
             total={totals}
@@ -362,10 +387,14 @@ export function WeekBoard({
           <>
             <div className={cx("hidden border-y border-line px-6 py-3 text-[0.8rem] font-semibold text-ink-3", GRID)}>
               <span>Müşteri</span>
-              <span>Verilen ekmek</span>
-              <span>İade ekmek</span>
+              <span className="grid grid-cols-[minmax(6rem,1.3fr)_repeat(2,minmax(5rem,1fr))_minmax(4.5rem,0.8fr)] gap-2">
+                <span>Ürün</span>
+                <span>Verilen</span>
+                <span>İade</span>
+                <span className="text-right">Tutar</span>
+              </span>
               <span>Alınan para</span>
-              <span className="text-right">Tutar</span>
+              <span className="text-right">Toplam tutar</span>
               <span className="text-right">Bugünkü sonuç</span>
               <span className="text-right">Toplam hesap</span>
               <span />
@@ -377,8 +406,10 @@ export function WeekBoard({
                   index={i}
                   row={r}
                   total={totals(r.customer_id)}
+                  products={customerProducts.get(r.customer_id) ?? []}
                   readOnly={locked || r.is_locked}
                   onDraft={(p) => patchRow(r.id, p)}
+                  onLine={(lineId, p) => patchLine(r.id, lineId, p)}
                 />
               ))}
             </ul>
@@ -391,7 +422,7 @@ export function WeekBoard({
             key={`${day}-${activeDriver.id}`}
             day={day}
             driver={activeDriver}
-            rows={dayRows}
+            rows={dayRows.map(summary)}
             expenses={dayExpenses.filter((e) => e.driver_id === activeDriver.id)}
             handedOver={driverDays.find((d) => d.entry_date === day && d.driver_id === activeDriver.id)?.handed_over ?? null}
             locked={locked}
@@ -488,28 +519,27 @@ function OrderRow({
   row,
   index,
   total,
+  products,
   readOnly,
   onDraft,
+  onLine,
 }: {
   row: BoardRow;
   index: number;
   total: number;
+  products: CustomerProduct[];
   readOnly: boolean;
   onDraft: (patch: Partial<BoardRow>) => void;
+  onLine: (lineId: number, patch: Partial<BoardLine>) => void;
 }) {
-  const [draft, setDraft] = useState({
-    delivered: row.delivered_qty ? String(row.delivered_qty) : "",
-    returned: row.returned_qty ? String(row.returned_qty) : "",
-    collection: row.collection
-      ? Number.isInteger(row.collection)
-        ? String(row.collection)
-        : row.collection.toFixed(2).replace(".", ",")
-      : "",
-  });
-  const [saved, setSaved] = useState({ d: row.delivered_qty, r: row.returned_qty, c: row.collection });
+  const [collectionText, setCollectionText] = useState(
+    row.collection ? (Number.isInteger(row.collection) ? String(row.collection) : row.collection.toFixed(2).replace(".", ",")) : "",
+  );
+  const [savedCollection, setSavedCollection] = useState(row.collection);
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, startDelete] = useTransition();
+  const [addingLine, startAddLine] = useTransition();
 
   useEffect(() => {
     if (!confirmDelete) return;
@@ -523,27 +553,12 @@ function OrderRow({
     return () => clearTimeout(t);
   }, [state]);
 
-  function update(field: keyof typeof draft, value: string) {
-    const next = { ...draft, [field]: value };
-    setDraft(next);
-    onDraft({
-      delivered_qty: Math.max(0, Math.trunc(parseAmount(next.delivered) ?? 0)),
-      returned_qty: Math.max(0, Math.trunc(parseAmount(next.returned) ?? 0)),
-      collection: Math.max(0, parseAmount(next.collection) ?? 0),
-    });
-  }
-
-  async function commit() {
-    const d = row.delivered_qty;
-    const r = row.returned_qty;
-    const c = row.collection;
-    if (d === saved.d && r === saved.r && c === saved.c) return;
-
+  async function commitCollection() {
+    if (row.collection === savedCollection) return;
     setState("saving");
-    const res = await saveOrder(row.id, { delivered_qty: d, returned_qty: r, collection: c });
+    const res = await saveCollection(row.id, row.collection);
     if (res.ok && res.data) {
-      setSaved({ d: res.data.delivered_qty, r: res.data.returned_qty, c: res.data.collection });
-      onDraft({ unit_price: res.data.unit_price });
+      setSavedCollection(res.data.collection);
       setState("saved");
     } else if (!res.ok) {
       setState("idle");
@@ -554,14 +569,23 @@ function OrderRow({
   const rowNet = net(row);
   const rowDelta = delta(row);
   const tone = balanceTone(rowDelta);
+  const missing = products.filter((p) => !row.lines.some((l) => l.product_id === p.product_id));
+
+  function addProduct(productId: number) {
+    startAddLine(async () => {
+      const res = await addLine(row.id, productId);
+      if (!res.ok) toast(res.error, "error");
+    });
+  }
 
   return (
     <li
       style={order(index)}
-      className="neu-sm animate-rise rounded-2xl p-4 xl:rounded-none xl:border-b xl:border-line xl:bg-transparent xl:px-6 xl:py-3.5 xl:shadow-none xl:transition-colors xl:hover:bg-brand-soft/40"
+      className="neu-sm animate-rise rounded-2xl p-4 xl:rounded-none xl:border-b xl:border-line xl:bg-transparent xl:px-6 xl:py-3.5 xl:shadow-none xl:transition-colors xl:hover:bg-brand-soft/30"
     >
       <div className={cx("flex flex-col gap-3", GRID)}>
-        <div className="flex items-start justify-between gap-3">
+        {/* Müşteri */}
+        <div className="flex items-start justify-between gap-3 xl:pt-2.5">
           <div className="min-w-0">
             <Link
               href={`/musteriler/${row.customer_id}`}
@@ -569,9 +593,8 @@ function OrderRow({
             >
               {row.customer_name}
             </Link>
-            <p className="tnum flex h-5 items-center gap-1.5 text-[0.8rem] text-ink-3">
-              Ekmek {money(row.unit_price)}
-              {state === "saving" && <span className="text-ink-2">· kaydediliyor…</span>}
+            <p className="flex h-5 items-center gap-1.5 text-[0.8rem] text-ink-3">
+              {state === "saving" && <span className="text-ink-2">kaydediliyor…</span>}
               {state === "saved" && (
                 <span className="animate-pop inline-flex items-center gap-1 font-semibold text-brand-deep dark:text-brand">
                   <Check size={14} strokeWidth={3} /> Kaydedildi
@@ -584,105 +607,227 @@ function OrderRow({
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 xl:contents">
-          <NumberBox
-            label="Verilen"
-            unit="adet"
-            value={draft.delivered}
-            readOnly={readOnly}
-            onChange={(v) => update("delivered", v)}
-            onCommit={commit}
-            ariaLabel={`${row.customer_name} verilen ekmek`}
-          />
-          <NumberBox
-            label="İade"
-            unit="adet"
-            value={draft.returned}
-            readOnly={readOnly}
-            onChange={(v) => update("returned", v)}
-            onCommit={commit}
-            ariaLabel={`${row.customer_name} iade ekmek`}
-          />
+        {/* Ürün satırları */}
+        <div className="flex flex-col gap-2">
+          {row.lines.length === 0 && (
+            <p className="rounded-xl bg-bg-deep/60 px-3 py-2.5 text-[0.85rem] text-ink-2">
+              Ürün satırı yok{readOnly ? "." : " — aşağıdan ürün ekleyin ya da sadece alınan parayı yazın."}
+            </p>
+          )}
+          {row.lines.map((l) => (
+            <LineRow
+              key={l.id}
+              line={l}
+              customerName={row.customer_name}
+              readOnly={readOnly}
+              onDraft={(p) => onLine(l.id, p)}
+              onSaved={(o) => onDraft({ collection: o.collection })}
+              onError={() => setState("idle")}
+            />
+          ))}
+          {!readOnly && missing.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {missing.map((p) => (
+                <button
+                  key={p.product_id}
+                  type="button"
+                  disabled={addingLine}
+                  onClick={() => addProduct(p.product_id)}
+                  className="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-edge-strong px-3 text-[0.8rem] font-semibold text-ink-2 transition-colors hover:border-brand hover:text-brand-deep dark:hover:text-brand"
+                >
+                  <Plus size={14} /> {p.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Alınan para */}
+        <div className="xl:pt-0">
           <NumberBox
             label="Alınan para"
             unit="₺"
             decimal
-            value={draft.collection}
+            value={collectionText}
             readOnly={readOnly}
-            onChange={(v) => update("collection", v)}
-            onCommit={commit}
+            onChange={(v) => {
+              setCollectionText(v);
+              onDraft({ collection: Math.max(0, parseAmount(v) ?? 0) });
+            }}
+            onCommit={commitCollection}
             ariaLabel={`${row.customer_name} tahsilat`}
           />
         </div>
 
+        {/* Mobil: sonuç */}
         <div className="flex flex-wrap items-center gap-2 xl:contents">
-        {/* Mobil: sonuç cümlesi */}
-        <p className="tnum flex-1 rounded-xl bg-bg-deep/70 px-3 py-2 text-[0.85rem] text-ink-2 xl:hidden">
-          Tutar <b className="text-ink">{money(rowNet)}</b> · Ödenen <b className="text-ink">{money(row.collection)}</b>
-          {tone !== "zero" && (
-            <>
-              {" → "}
-              <b className={tone === "debt" ? "text-debt" : "text-credit"}>
-                {money(Math.abs(rowDelta))} {tone === "debt" ? "borç yazıldı" : "fazla ödedi"}
-              </b>
-            </>
-          )}
-        </p>
+          <p className="tnum flex-1 rounded-xl bg-bg-deep/70 px-3 py-2 text-[0.85rem] text-ink-2 xl:hidden">
+            Tutar <b className="text-ink">{money(rowNet)}</b> · Ödenen <b className="text-ink">{money(row.collection)}</b>
+            {tone !== "zero" && (
+              <>
+                {" → "}
+                <b className={tone === "debt" ? "text-debt" : "text-credit"}>
+                  {money(Math.abs(rowDelta))} {tone === "debt" ? "borç yazıldı" : "fazla ödedi"}
+                </b>
+              </>
+            )}
+          </p>
 
-        {/* Mobil: müşterinin toplam hesabı */}
-        <div className="order-last flex basis-full items-center justify-between gap-3 rounded-xl border border-edge px-3 py-2 xl:hidden">
-          <span className="text-[0.82rem] font-semibold text-ink-2">Toplam hesap</span>
-          <span className="flex items-center gap-2">
-            <Balance value={total} />
+          <div className="order-last flex basis-full items-center justify-between gap-3 rounded-xl border border-edge px-3 py-2 xl:hidden">
+            <span className="text-[0.82rem] font-semibold text-ink-2">Toplam hesap</span>
+            <span className="flex items-center gap-2">
+              <Balance value={total} />
+              <BalanceBadge value={total} kind="total" />
+            </span>
+          </div>
+
+          <p className="tnum hidden pt-3 text-right text-[1rem] font-semibold xl:block">{money(rowNet)}</p>
+          <div className="hidden flex-col items-end gap-0.5 pt-2 xl:flex">
+            <Balance value={rowDelta} />
+            <BalanceBadge value={rowDelta} kind="delta" />
+          </div>
+          <div className="hidden flex-col items-end gap-0.5 pt-2 xl:flex">
+            <Balance value={total} className="text-[1.02rem]" />
             <BalanceBadge value={total} kind="total" />
-          </span>
-        </div>
+          </div>
 
-        <p className="tnum hidden text-right text-[1rem] font-semibold xl:block">{money(rowNet)}</p>
-        <div className="hidden flex-col items-end gap-0.5 xl:flex">
-          <Balance value={rowDelta} />
-          <BalanceBadge value={rowDelta} kind="delta" />
-        </div>
-        <div className="hidden flex-col items-end gap-0.5 xl:flex">
-          <Balance value={total} className="text-[1.02rem]" />
-          <BalanceBadge value={total} kind="total" />
-        </div>
-
-        <div className="shrink-0 xl:block">
-          {!readOnly && (
-            <button
-              type="button"
-              disabled={deleting}
-              onClick={() =>
-                confirmDelete
-                  ? startDelete(async () => {
-                      const res = await deleteOrder(row.id);
-                      if (res.ok) toast(`${row.customer_name} bu günden çıkarıldı.`);
-                      else toast(res.error, "error");
-                    })
-                  : setConfirmDelete(true)
-              }
-              className={cx(
-                "inline-flex h-10 items-center justify-center gap-1.5 rounded-xl text-[0.82rem] font-semibold whitespace-nowrap transition-all duration-200",
-                confirmDelete ? "bg-debt px-3 text-white" : "w-10 text-ink-3 hover:bg-debt-soft hover:text-debt",
-              )}
-              aria-label={confirmDelete ? "Silmeyi onayla" : `${row.customer_name} satırını sil`}
-            >
-              {confirmDelete ? (deleting ? "Siliniyor" : "Sil?") : <Trash2 size={17} />}
-            </button>
-          )}
-        </div>
+          <div className="shrink-0 xl:block xl:pt-1.5">
+            {!readOnly && (
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() =>
+                  confirmDelete
+                    ? startDelete(async () => {
+                        const res = await deleteOrder(row.id);
+                        if (res.ok) toast(`${row.customer_name} bu günden çıkarıldı.`);
+                        else toast(res.error, "error");
+                      })
+                    : setConfirmDelete(true)
+                }
+                className={cx(
+                  "inline-flex h-10 items-center justify-center gap-1.5 rounded-xl text-[0.82rem] font-semibold whitespace-nowrap transition-all duration-200",
+                  confirmDelete ? "bg-debt px-3 text-white" : "w-10 text-ink-3 hover:bg-debt-soft hover:text-debt",
+                )}
+                aria-label={confirmDelete ? "Silmeyi onayla" : `${row.customer_name} satırını sil`}
+              >
+                {confirmDelete ? (deleting ? "Siliniyor" : "Sil?") : <Trash2 size={17} />}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </li>
   );
 }
 
+/** Bir ürün satırı: ürün · verilen · iade · tutar. Çıkınca kaydeder. */
+function LineRow({
+  line,
+  customerName,
+  readOnly,
+  onDraft,
+  onSaved,
+  onError,
+}: {
+  line: BoardLine;
+  customerName: string;
+  readOnly: boolean;
+  onDraft: (patch: Partial<BoardLine>) => void;
+  onSaved: (order: OrderTotals) => void;
+  onError: () => void;
+}) {
+  const [d, setD] = useState(line.delivered_qty ? String(line.delivered_qty) : "");
+  const [r, setR] = useState(line.returned_qty ? String(line.returned_qty) : "");
+  const [saved, setSaved] = useState({ d: line.delivered_qty, r: line.returned_qty });
+  const [removing, startRemove] = useTransition();
+  const [ok, setOk] = useState(false);
+
+  useEffect(() => {
+    if (!ok) return;
+    const t = setTimeout(() => setOk(false), 1500);
+    return () => clearTimeout(t);
+  }, [ok]);
+
+  async function commit() {
+    if (line.delivered_qty === saved.d && line.returned_qty === saved.r) return;
+    const res = await saveLine(line.id, line.delivered_qty, line.returned_qty);
+    if (res.ok && res.data) {
+      setSaved({ d: res.data.line.delivered_qty, r: res.data.line.returned_qty });
+      onDraft({ unit_price: Number(res.data.line.unit_price) });
+      onSaved(res.data.order);
+      setOk(true);
+    } else if (!res.ok) {
+      onError();
+      toast(`${customerName}: ${res.error}`, "error");
+    }
+  }
+
+  const unit = line.product_unit || "adet";
+  const amount = (line.delivered_qty - line.returned_qty) * line.unit_price;
+  const empty = line.delivered_qty === 0 && line.returned_qty === 0;
+
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 rounded-xl xl:grid-cols-[minmax(6rem,1.3fr)_repeat(2,minmax(5rem,1fr))_minmax(4.5rem,0.8fr)] xl:items-center">
+      <div className="col-span-2 flex items-center justify-between gap-2 xl:col-span-1 xl:block">
+        <p className="min-w-0 truncate text-[0.9rem] font-semibold">
+          {line.product_name}
+          {ok && <Check size={13} strokeWidth={3} className="animate-pop ml-1 inline text-brand-deep dark:text-brand" />}
+        </p>
+        <p className="tnum flex items-center gap-2 text-[0.76rem] text-ink-3">
+          {money(line.unit_price)} / {unit}
+          {!readOnly && empty && (
+            <button
+              type="button"
+              disabled={removing}
+              onClick={() =>
+                startRemove(async () => {
+                  const res = await deleteLine(line.id);
+                  if (!res.ok) toast(res.error, "error");
+                })
+              }
+              className="rounded-md px-1.5 text-[0.74rem] font-semibold text-ink-3 hover:bg-debt-soft hover:text-debt"
+              aria-label={`${line.product_name} satırını kaldır`}
+            >
+              Kaldır
+            </button>
+          )}
+        </p>
+      </div>
+      <NumberBox
+        label="Verilen"
+        unit={unit}
+        value={d}
+        readOnly={readOnly}
+        onChange={(v) => {
+          setD(v);
+          onDraft({ delivered_qty: Math.max(0, Math.trunc(parseAmount(v) ?? 0)) });
+        }}
+        onCommit={commit}
+        ariaLabel={`${customerName} ${line.product_name} verilen`}
+      />
+      <NumberBox
+        label="İade"
+        unit={unit}
+        value={r}
+        readOnly={readOnly}
+        onChange={(v) => {
+          setR(v);
+          onDraft({ returned_qty: Math.max(0, Math.trunc(parseAmount(v) ?? 0)) });
+        }}
+        onCommit={commit}
+        ariaLabel={`${customerName} ${line.product_name} iade`}
+      />
+      <p className="tnum col-span-2 text-right text-[0.85rem] font-semibold text-ink-2 xl:col-span-1">{money(amount)}</p>
+    </div>
+  );
+}
+
 function DayTotals({ rows }: { rows: BoardRow[] }) {
   const dayDelta = sum(rows, delta);
   const items = [
-    { label: "Verilen", value: `${qty(sum(rows, (r) => r.delivered_qty))} adet`, icon: ArrowUpRight, tone: "brand" as const },
-    { label: "İade", value: `${qty(sum(rows, (r) => r.returned_qty))} adet`, icon: ArrowDownLeft, tone: "amber" as const },
+    { label: "Verilen", value: `${qty(sum(rows, delivered))} adet`, icon: ArrowUpRight, tone: "brand" as const },
+    { label: "İade", value: `${qty(sum(rows, returned))} adet`, icon: ArrowDownLeft, tone: "amber" as const },
     { label: "Tutar", value: money(sum(rows, net)), icon: Receipt, tone: "neutral" as const },
     { label: "Alınan para", value: money(sum(rows, (r) => r.collection)), icon: HandCoins, tone: "sky" as const },
   ];
@@ -807,7 +952,7 @@ function AddCustomersForm({
               >
                 <span className="min-w-0 truncate text-[1rem] font-semibold">{c.name}</span>
                 <span className="flex shrink-0 items-center gap-3">
-                  <span className="tnum text-[0.85rem] text-ink-3">{money(c.current_price)}</span>
+                  <span className="tnum max-w-[45%] truncate text-[0.8rem] text-ink-3">{c.products.map((p) => p.name).join(" · ") || "Ürün yok"}</span>
                   <span
                     className={cx(
                       "grid size-7 place-items-center rounded-full transition-all duration-200",

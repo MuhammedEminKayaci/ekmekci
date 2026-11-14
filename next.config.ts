@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
 const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+// Canlı güncelleme Supabase Realtime'a websocket ile bağlanır.
+const supabaseWs = supabase.replace(/^http/, "ws");
 
 // Sayfa yalnızca kendi sunucusundan betik/stil yükler ve yalnızca Supabase'e bağlanır.
 // 'unsafe-inline' Next.js'in sayfa içi başlatma betikleri için gerekli; dış kaynaklı betik yasak.
@@ -11,7 +13,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
-  `connect-src 'self' ${supabase}${isDev ? " ws: wss:" : ""}`.trim(),
+  `connect-src 'self' ${supabase} ${supabaseWs}${isDev ? " ws: wss:" : ""}`.trim(),
   "frame-ancestors 'none'",
   "frame-src 'none'",
   "object-src 'none'",

@@ -21,7 +21,7 @@ type Row = {
   customer_name: string;
   delivered_qty: number;
   returned_qty: number;
-  unit_price: number;
+  net: number;
   collection: number;
 };
 
@@ -45,7 +45,7 @@ export function DriverDay({
 }) {
   const delivered = rows.reduce((a, r) => a + r.delivered_qty, 0);
   const returned = rows.reduce((a, r) => a + r.returned_qty, 0);
-  const sales = rows.reduce((a, r) => a + (r.delivered_qty - r.returned_qty) * r.unit_price, 0);
+  const sales = rows.reduce((a, r) => a + r.net, 0);
   const collected = rows.reduce((a, r) => a + r.collection, 0);
   const spent = expenses.reduce((a, e) => a + Number(e.amount), 0);
   const toHand = collected - spent;
@@ -77,7 +77,7 @@ export function DriverDay({
             name: r.customer_name,
             delivered: r.delivered_qty,
             returned: r.returned_qty,
-            net: (r.delivered_qty - r.returned_qty) * r.unit_price,
+            net: r.net,
             collection: r.collection,
           })),
           expenses.map((e) => ({ category: e.category, description: e.description, amount: Number(e.amount) })),

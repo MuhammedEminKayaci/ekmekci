@@ -128,6 +128,7 @@ export type Database = {
           customer_id: number
           id: number
           price: number
+          product_id: number
           valid_from: string
         }
         Insert: {
@@ -136,6 +137,7 @@ export type Database = {
           customer_id: number
           id?: never
           price: number
+          product_id: number
           valid_from: string
         }
         Update: {
@@ -144,6 +146,7 @@ export type Database = {
           customer_id?: number
           id?: never
           price?: number
+          product_id?: number
           valid_from?: string
         }
         Relationships: [
@@ -435,6 +438,105 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          name_key: string | null
+          sort_order: number
+          suggested_price: number | null
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          is_active?: boolean
+          name: string
+          name_key?: never
+          sort_order?: number
+          suggested_price?: number | null
+          unit?: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          is_active?: boolean
+          name?: string
+          name_key?: never
+          sort_order?: number
+          suggested_price?: number | null
+          unit?: string
+        }
+        Relationships: []
+      }
+      customer_products: {
+        Row: {
+          created_at: string
+          customer_id: number
+          id: number
+          is_active: boolean
+          product_id: number
+        }
+        Insert: {
+          created_at?: string
+          customer_id: number
+          id?: never
+          is_active?: boolean
+          product_id: number
+        }
+        Update: {
+          created_at?: string
+          customer_id?: number
+          id?: never
+          is_active?: boolean
+          product_id?: number
+        }
+        Relationships: []
+      }
+      order_lines: {
+        Row: {
+          created_at: string
+          delivered_qty: number
+          gross_amount: number | null
+          id: number
+          net_amount: number | null
+          order_id: number
+          product_id: number
+          return_amount: number | null
+          returned_qty: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_qty?: number
+          gross_amount?: never
+          id?: never
+          net_amount?: never
+          order_id: number
+          product_id: number
+          return_amount?: never
+          returned_qty?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivered_qty?: number
+          gross_amount?: never
+          id?: never
+          net_amount?: never
+          order_id?: number
+          product_id?: number
+          return_amount?: never
+          returned_qty?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -469,13 +571,12 @@ export type Database = {
           address: string | null
           balance: number | null
           created_at: string | null
-          current_price: number | null
           id: number | null
           is_active: boolean | null
           last_entry_date: string | null
           name: string | null
           note: string | null
-          price_since: string | null
+          products: Json | null
           type: number | null
         }
         Relationships: []
@@ -487,10 +588,35 @@ export type Database = {
           p_address?: string
           p_name: string
           p_note?: string
-          p_price: number
+          p_products: Json
           p_type: number
         }
         Returns: number
+      }
+      get_product_daily: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          customers: number
+          delivered_qty: number
+          entry_date: string
+          net_amount: number
+          product_id: number
+          returned_qty: number
+        }[]
+      }
+      get_week_lines: {
+        Args: { p_date: string }
+        Returns: {
+          delivered_qty: number
+          id: number
+          net_amount: number
+          order_id: number
+          product_id: number
+          product_name: string
+          product_unit: string
+          returned_qty: number
+          unit_price: number
+        }[]
       }
       get_customer_period_summary: {
         Args: { p_from: string; p_to: string }
@@ -570,7 +696,7 @@ export type Database = {
         Returns: undefined
       }
       set_customer_price: {
-        Args: { p_customer_id: number; p_price: number; p_valid_from?: string }
+        Args: { p_customer_id: number; p_price: number; p_product_id: number; p_valid_from?: string }
         Returns: undefined
       }
     }

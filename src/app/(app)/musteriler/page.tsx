@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
+import type { CatalogProduct } from "./customer-form";
 import { CustomerList, type CustomerItem } from "./customer-list";
 
 export const metadata: Metadata = { title: "Müşteriler" };
@@ -13,10 +14,21 @@ async function Customers({ searchParams }: { searchParams: Search }) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("customer_overview")
-    .select("id, name, type, address, is_active, current_price, balance, last_entry_date")
+    .select("id, name, type, address, is_active, products, balance, last_entry_date")
     .order("name");
+  const { data: catalog } = await supabase
+    .from("products")
+    .select("id, name, unit, suggested_price")
+    .eq("is_active", true)
+    .order("sort_order");
 
-  return <CustomerList customers={(data ?? []) as CustomerItem[]} openNew={sp.yeni === "1"} />;
+  return (
+    <CustomerList
+      customers={(data ?? []) as unknown as CustomerItem[]}
+      catalog={(catalog ?? []) as CatalogProduct[]}
+      openNew={sp.yeni === "1"}
+    />
+  );
 }
 
 function ListSkeleton() {
