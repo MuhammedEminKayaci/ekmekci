@@ -129,6 +129,7 @@ export type Database = {
           entry_date: string
           id: number
           name: string
+          name_key: string | null
           product_id: number | null
           qty: number
           unit_price: number
@@ -141,6 +142,7 @@ export type Database = {
           entry_date: string
           id?: never
           name: string
+          name_key?: string | null
           product_id?: number | null
           qty: number
           unit_price: number
@@ -153,6 +155,7 @@ export type Database = {
           entry_date?: string
           id?: never
           name?: string
+          name_key?: string | null
           product_id?: number | null
           qty?: number
           unit_price?: number
@@ -769,6 +772,10 @@ export type Database = {
       }
     }
     Functions: {
+      add_counter_sale: {
+        Args: { p_date: string; p_name: string; p_price: number; p_qty: number }
+        Returns: number
+      }
       create_customer: {
         Args: {
           p_address?: string

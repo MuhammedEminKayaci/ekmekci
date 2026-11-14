@@ -738,11 +738,27 @@ export async function addCounterSale(input: CounterSaleInput): Promise<ActionRes
   const price = moneyValue(input.unitPrice, 999_999);
   if (price == null) return { ok: false, error: "Fiyat girin." };
 
+  // Aynı gün + aynı ürün + aynı fiyat varsa adedi arttırılır (tek satır).
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("counter_sales")
-    .insert({ entry_date: input.date, name, qty: qtyNum, unit_price: price });
+  const { error } = await supabase.rpc("add_counter_sale", { p_date: input.date, p_name: name, p_qty: qtyNum, p_price: price });
   if (error) return { ok: false, error: friendly(error) };
+
+  refresh();
+  return { ok: true };
+}
+
+/** Tezgah satırının adedini değiştirir; 0 olursa satır silinir. */
+export async function setCounterSaleQty(id: number, qty: number): Promise<ActionResult> {
+  if (!isId(id) || typeof qty !== "number" || !Number.isFinite(qty) || qty < 0 || qty >= 100_000) return BAD_INPUT;
+  const value = Math.round(qty * 100) / 100;
+
+  const supabase = await createClient();
+  const { data, error } =
+    value === 0
+      ? await supabase.from("counter_sales").delete().eq("id", id).select("id")
+      : await supabase.from("counter_sales").update({ qty: value }).eq("id", id).select("id");
+  if (error) return { ok: false, error: friendly(error) };
+  if (!data?.length) return NO_PERMISSION;
 
   refresh();
   return { ok: true };
