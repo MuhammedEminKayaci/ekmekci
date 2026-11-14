@@ -340,11 +340,11 @@ function EntryForm({
     const value = parseAmount(amount);
     if (!value || value <= 0) return toast("Tutarı yazın.", "error");
     if (kind === "payment" && !customerId) return toast("Ödeme yapılan cariyi seçin.", "error");
-    const isDriver = kind === "expense" && target.startsWith("d:");
+    const isDriver = kind === "expense" && !picked && target.startsWith("d:");
     start(async () => {
       const res = await addExpense({
         date: day,
-        place: kind === "payment" ? "general" : isDriver ? "driver" : (target as "general" | "counter"),
+        place: kind === "payment" || picked ? "general" : isDriver ? "driver" : (target as "general" | "counter"),
         driverId: isDriver ? Number(target.slice(2)) : null,
         customerId,
         kind,
@@ -400,7 +400,8 @@ function EntryForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      {kind === "expense" && (
+      {/* Cari seçiliyse gider doğrudan Genel'e yazılır; yer seçimi gizlenir. */}
+      {kind === "expense" && !picked && (
         <div>
           <p className={label}>Kime / nereye ait</p>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Gider yeri">
