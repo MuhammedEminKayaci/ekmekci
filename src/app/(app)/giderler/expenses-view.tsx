@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowDownRight, Banknote, BookUser, Check, HandCoins, Lock, Plus, ReceiptText, Settings2, Trash2, Wallet, X } from "lucide-react";
+import { Banknote, BookUser, Check, HandCoins, Lock, Plus, ReceiptText, Settings2, Trash2, Wallet, X } from "lucide-react";
 import { AnimatedNumber } from "@/components/animated-number";
 import { Combobox } from "@/components/combobox";
 import { toast } from "@/components/toast";
@@ -332,6 +332,7 @@ function EntryForm({
     setCustomerId(null);
     setCustomerText("");
     setPayment("cash");
+    setKind("expense");
   }
 
   function submit(ev: React.FormEvent) {
@@ -355,6 +356,7 @@ function EntryForm({
       if (res.ok) {
         setAmount("");
         setDescription("");
+        setKind("expense");
         toast(
           kind === "payment"
             ? `${picked?.name ?? "Cari"}: ${money(value)} ödeme kaydedildi.`
@@ -398,27 +400,6 @@ function EntryForm({
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      {/* İşlem */}
-      <div className="neu-inset grid grid-cols-2 rounded-full p-1" role="group" aria-label="İşlem">
-        {[
-          { v: "expense" as const, t: "Gider", icon: ArrowDownRight },
-          { v: "payment" as const, t: "Cariye ödeme", icon: HandCoins },
-        ].map((o) => (
-          <button
-            key={o.v}
-            type="button"
-            aria-pressed={kind === o.v}
-            onClick={() => setKind(o.v)}
-            className={cx(
-              "inline-flex min-h-11 items-center justify-center gap-2 rounded-full text-[0.9rem] font-semibold transition-all duration-300",
-              kind === o.v ? "brand-fill" : "text-ink-2 hover:text-ink",
-            )}
-          >
-            <o.icon size={16} /> {o.t}
-          </button>
-        ))}
-      </div>
-
       {kind === "expense" && (
         <div>
           <p className={label}>Kime / nereye ait</p>
@@ -434,7 +415,7 @@ function EntryForm({
 
       {/* Cari */}
       <div>
-        <p className={label}>{kind === "payment" ? "Ödeme yapılan cari" : "Cari (isteğe bağlı) — kimden alındı?"}</p>
+        <p className={label}>Cari (isteğe bağlı) — kimden alındı?</p>
         {picked ? (
           <div className="flex min-h-12 items-center gap-3 rounded-control bg-brand-soft/60 px-3.5 ring-1 ring-brand/30">
             <span className="min-w-0 flex-1 truncate font-semibold">{picked.name}</span>
@@ -458,6 +439,33 @@ function EntryForm({
             ariaLabel="Cari ara"
             emptyText="Bu isimde müşteri yok. Önce Müşteriler'den ekleyin (ürün seçmeden)."
           />
+        )}
+        {picked && picked.balance < 0 && kind === "expense" && (
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-amber-soft px-3.5 py-2.5">
+            <span className="text-[0.86rem]">
+              {picked.name}&apos;a borcumuz <b className="tnum">{money(-picked.balance)}</b>
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setKind("payment");
+                setAmount(String(-picked.balance).replace(".", ","));
+              }}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-surface px-3.5 text-[0.84rem] font-semibold text-ink ring-1 ring-edge hover:ring-brand"
+            >
+              <HandCoins size={15} /> Ödeme yap
+            </button>
+          </div>
+        )}
+        {kind === "payment" && picked && (
+          <p className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-sky-500/10 px-3.5 py-2.5 text-[0.86rem]">
+            <span>
+              <b>{picked.name}</b>&apos;a ödeme — borcumuzdan düşülür, gider sayılmaz.
+            </span>
+            <button type="button" onClick={() => setKind("expense")} className="shrink-0 rounded-lg px-2 py-1 text-[0.8rem] font-semibold text-ink-3 hover:text-ink">
+              Vazgeç
+            </button>
+          </p>
         )}
       </div>
 
