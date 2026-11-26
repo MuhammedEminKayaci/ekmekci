@@ -33,7 +33,7 @@ export function CustomerActions({ customer }: { customer: CustomerFormValues & {
           <Pencil size={16} /> Kartı düzenle
         </Button>
       </div>
-      {error && <p className="text-[0.85rem] font-medium text-debt">{error}</p>}
+      {error && <p className="text-small font-medium text-debt">{error}</p>}
       <Sheet open={editing} onClose={() => setEditing(false)} title="Müşteri kartı">
         <CustomerForm initial={customer} onDone={() => setEditing(false)} />
       </Sheet>
@@ -84,7 +84,7 @@ export function PriceAction({
       aria-pressed={productId === id}
       onClick={() => setProductId(id)}
       className={cx(
-        "min-h-10 rounded-full px-3.5 text-[0.88rem] font-semibold transition-all duration-200",
+        "min-h-10 rounded-full px-3.5 text-small font-semibold transition-all duration-200",
         productId === id ? "brand-fill" : "bg-bg-deep text-ink-2 hover:text-ink",
       )}
     >
@@ -97,19 +97,19 @@ export function PriceAction({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg px-2.5 py-1.5 text-[0.85rem] font-semibold text-brand-deep hover:bg-brand-soft dark:text-brand"
+        className="rounded-lg px-2.5 py-1.5 text-small font-semibold text-brand-deep hover:bg-brand-soft dark:text-brand"
       >
         Fiyat / ürün
       </button>
       <Sheet open={open} onClose={() => setOpen(false)} title={isNew ? "Ürün ekle" : "Fiyatı değiştir"}>
         <form action={submit} className="flex flex-col gap-4">
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1.5 text-[0.85rem] font-semibold text-ink-2">Ürün</legend>
+            <legend className="mb-1.5 text-small font-semibold text-ink-2">Ürün</legend>
             <div className="flex flex-wrap gap-2">
               {owned.map((o) => chip(o.product_id, o.name, false))}
               {addable.map((a) => chip(a.id, a.name, true))}
             </div>
-            {addable.length > 0 && <span className="text-[0.78rem] text-ink-3">“+” ile başlayanlar bu müşteriye yeni eklenir.</span>}
+            {addable.length > 0 && <span className="text-label text-ink-3">“+” ile başlayanlar bu müşteriye yeni eklenir.</span>}
           </fieldset>
           <Field label={isNew ? "Bu müşteriye fiyatı (₺)" : "Yeni fiyat (₺)"}>
             <input
@@ -130,11 +130,11 @@ export function PriceAction({
             <input name="valid_from" type="date" required defaultValue={today} className={inputClass} />
           </Field>
           {error && (
-            <p role="alert" className="rounded-control bg-debt-soft px-3.5 py-2.5 text-[0.88rem] font-medium text-debt">
+            <p role="alert" className="rounded-control bg-debt-soft px-3.5 py-2.5 text-small font-medium text-debt">
               {error}
             </p>
           )}
-          <button type="submit" disabled={pending || productId == null} className={buttonClass("primary", "min-h-14 w-full text-[1rem]")}>
+          <button type="submit" disabled={pending || productId == null} className={buttonClass("primary", "min-h-14 w-full text-input")}>
             {pending ? "Kaydediliyor…" : isNew ? "Ürünü ekle" : "Fiyatı kaydet"}
           </button>
         </form>
@@ -153,7 +153,7 @@ export function ProductPrices({
 }) {
   const [all, setAll] = useState(false);
   const LIMIT = 4;
-  if (owned.length === 0) return <p className="text-[0.9rem] text-ink-2">Bu müşteriye henüz ürün eklenmedi.</p>;
+  if (owned.length === 0) return <p className="text-small text-ink-2">Bu müşteriye henüz ürün eklenmedi.</p>;
   const shown = all ? owned : owned.slice(0, LIMIT);
 
   return (
@@ -166,13 +166,13 @@ export function ProductPrices({
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{p.name}</span>
                 {(p.since || before.length > 0) && (
-                  <span className="tnum block truncate text-[0.74rem] text-ink-3">
+                  <span className="tnum block truncate text-caption text-ink-3">
                     {p.since ? `${shortDate(p.since)}'den beri` : ""}
                     {before.length > 0 && ` · önce ${before.map((x) => money(x)).join(", ")}`}
                   </span>
                 )}
               </span>
-              <span className="tnum font-display text-[1.08rem] font-semibold">{money(p.price)}</span>
+              <span className="tnum font-display text-lead font-semibold">{money(p.price)}</span>
               <RemoveProduct customerId={customerId} productId={p.product_id} name={p.name} />
             </li>
           );
@@ -182,7 +182,7 @@ export function ProductPrices({
         <button
           type="button"
           onClick={() => setAll((v) => !v)}
-          className="mt-1 self-start rounded-lg px-2 py-1.5 text-[0.84rem] font-semibold text-brand-deep hover:bg-brand-soft dark:text-brand"
+          className="mt-1 self-start rounded-lg px-2 py-1.5 text-small font-semibold text-brand-deep hover:bg-brand-soft dark:text-brand"
         >
           {all ? "Daha az göster" : `+${owned.length - LIMIT} ürün daha`}
         </button>

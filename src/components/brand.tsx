@@ -16,7 +16,7 @@ export function Brand({ className, onDark = false }: { className?: string; onDar
           <path d="M9 9.5 8 12.5M12.5 9 11.5 12.5M16 9.5l-1 3" />
         </svg>
       </span>
-      <span className={cx("font-display text-[1.35rem] font-bold tracking-[-0.03em]", onDark ? "text-white" : "text-ink")}>
+      <span className={cx("font-display text-title font-bold tracking-[-0.03em]", onDark ? "text-white" : "text-ink")}>
         Ekmekçi
       </span>
     </span>

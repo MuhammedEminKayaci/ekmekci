@@ -16,14 +16,14 @@ async function UserCard({ onDark = false }: { onDark?: boolean }) {
   return (
     <div className={cx("flex items-center gap-3", onDark && "rounded-2xl bg-white/10 p-2.5")}>
       {onDark && (
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-[0.95rem] font-bold text-[#0a5a32]">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-body font-bold text-brand-strong">
           {initial}
         </span>
       )}
       {onDark && (
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold text-white">{name}</p>
-          <p className="text-[0.75rem] text-white/60">{profile?.isAdmin ? "Yönetici" : profile?.isActive ? "Kullanıcı" : "Pasif hesap"}</p>
+          <p className="text-caption text-white/60">{profile?.isAdmin ? "Yönetici" : profile?.isActive ? "Kullanıcı" : "Pasif hesap"}</p>
         </div>
       )}
       <form action={signOut}>
@@ -61,7 +61,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-dvh">
       <aside className="sticky top-0 hidden h-dvh w-[18.5rem] shrink-0 p-4 lg:block">
-        <div className="flex h-full flex-col gap-9 rounded-[1.9rem] bg-[linear-gradient(165deg,var(--side-a),var(--side-b))] p-5 shadow-[0_24px_48px_-20px_rgba(8,60,32,0.55)]">
+        <div className="flex h-full flex-col gap-9 rounded-[1.9rem] bg-[linear-gradient(165deg,var(--side-a),var(--side-b))] p-5">
           <Brand onDark className="px-1 pt-1" />
           <Suspense fallback={<SideNavFallback />}>
             <SideNav />

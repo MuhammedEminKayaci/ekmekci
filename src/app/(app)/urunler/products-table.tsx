@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { AnimatedNumber } from "@/components/animated-number";
-import { Empty, cx, inputClass, order } from "@/components/ui";
+import { Empty, cx, inputClass } from "@/components/ui";
 import { categoryColor } from "@/lib/colors";
 import { money, qty } from "@/lib/format";
 import { ProductMenu } from "./product-manage";
@@ -31,12 +31,12 @@ const GRID =
 const CELL = "md:flex md:items-center md:border-l md:border-line md:px-3";
 const TONE = {
   day: "md:bg-brand-soft/45",
-  week: "md:bg-sky-500/[0.07]",
+  week: "md:bg-sky-soft/60",
   month: "md:bg-violet-500/[0.07]",
 } as const;
 const HEAD_TONE = {
   day: "md:bg-brand-soft text-brand-deep dark:text-brand",
-  week: "md:bg-sky-500/12 text-sky-700 dark:text-sky-300",
+  week: "md:bg-sky-soft text-sky",
   month: "md:bg-violet-500/12 text-violet-700 dark:text-violet-300",
 } as const;
 
@@ -88,17 +88,17 @@ export function ProductsTable({
           { label: "Bu hafta", s: totals.week },
           { label: monthName, s: totals.month },
         ].map((x, i) => (
-          <div key={x.label} style={order(i + 1)} className={cx("neu animate-rise rounded-tile p-3.5 sm:p-5", i === 0 && "ring-2 ring-brand/30")}>
-            <p className="text-[0.74rem] font-semibold text-ink-3 sm:text-[0.85rem]">{x.label}</p>
-            <p className="tnum mt-1 truncate font-display text-[1.15rem] font-semibold sm:text-[1.7rem]">
+          <div key={x.label} className={cx("neu rounded-tile p-3.5 sm:p-5", i === 0 && "ring-2 ring-brand/30")}>
+            <p className="text-caption font-semibold text-ink-3 sm:text-small">{x.label}</p>
+            <p className="tnum mt-1 truncate font-display text-lead font-semibold sm:text-heading">
               <AnimatedNumber value={x.s.amount} />
             </p>
-            <p className="tnum truncate text-[0.72rem] text-ink-3 sm:text-[0.8rem]">{qty(x.s.qty)} satış</p>
+            <p className="tnum truncate text-caption text-ink-3 sm:text-label">{qty(x.s.qty)} satış</p>
           </div>
         ))}
       </div>
 
-      <section style={order(4)} className="neu animate-rise rounded-tile">
+      <section className="neu rounded-tile">
         <div className="flex flex-col gap-3 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="scroll-soft -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:pb-0" role="group" aria-label="Tür">
             {[{ id: "all" as const, name: "Hepsi", count: rows.length }, ...categories].map((c) => (
@@ -108,7 +108,7 @@ export function ProductsTable({
                 aria-pressed={cat === c.id}
                 onClick={() => setCat(c.id)}
                 className={cx(
-                  "min-h-10 shrink-0 rounded-full px-4 text-[0.85rem] font-semibold whitespace-nowrap transition-all duration-200",
+                  "min-h-10 shrink-0 rounded-full px-4 text-small font-semibold whitespace-nowrap transition-all duration-200",
                   cat === c.id ? "brand-fill" : "bg-bg-deep text-ink-2 hover:text-ink",
                 )}
               >
@@ -136,7 +136,7 @@ export function ProductsTable({
                 aria-pressed={showPassive}
                 onClick={() => setShowPassive((v) => !v)}
                 className={cx(
-                  "min-h-11 shrink-0 rounded-full px-3.5 text-[0.82rem] font-semibold",
+                  "min-h-11 shrink-0 rounded-full px-3.5 text-label font-semibold",
                   showPassive ? "brand-fill" : "bg-bg-deep text-ink-2",
                 )}
               >
@@ -152,7 +152,7 @@ export function ProductsTable({
           </Empty>
         ) : (
           <>
-            <div className={cx("hidden border-y border-line text-[0.76rem] font-semibold text-ink-3", GRID)}>
+            <div className={cx("hidden border-y border-line text-caption font-semibold text-ink-3", GRID)}>
               <span className="flex items-center px-6 py-2.5">Ürün</span>
               <span className={cx(CELL, "py-2.5")}>Tür</span>
               <span className={cx(CELL, HEAD_TONE.day, "justify-end py-2.5")}>Bugün</span>
@@ -185,8 +185,8 @@ export function ProductsTable({
                     <div className="flex min-h-10 min-w-0 items-center gap-2 md:px-6">
                       <span className="min-w-0 flex-1 truncate">
                         <span className="font-semibold">{r.name}</span>
-                        <span className="ml-1.5 text-[0.76rem] text-ink-3">{r.unit}</span>
-                        {!r.is_active && <span className="ml-2 rounded-full bg-bg-deep px-2 py-0.5 text-[0.68rem] font-semibold text-ink-2">Pasif</span>}
+                        <span className="ml-1.5 text-caption text-ink-3">{r.unit}</span>
+                        {!r.is_active && <span className="ml-2 rounded-full bg-bg-deep px-2 py-0.5 text-micro font-semibold text-ink-2">Pasif</span>}
                       </span>
                       {c && (
                         <span className="md:hidden">
@@ -205,7 +205,7 @@ export function ProductsTable({
                       <Cell label="Bu hafta" s={r.week} tone="week" />
                       <Cell label={monthName} s={r.month} tone="month" />
                     </div>
-                    <span className={cx("tnum hidden justify-end text-[0.88rem] text-ink-2", CELL)}>
+                    <span className={cx("tnum hidden justify-end text-small text-ink-2", CELL)}>
                       {r.suggested_price != null ? money(r.suggested_price) : "—"}
                     </span>
                     <span className={cx("hidden justify-center", CELL, "md:px-0")}>
@@ -225,12 +225,12 @@ export function ProductsTable({
 function Cell({ label, s, tone }: { label: string; s: Sum; tone: keyof typeof TONE }) {
   return (
     <div className={cx("min-w-0 rounded-lg bg-surface/70 px-2 py-1.5 md:justify-between md:gap-2 md:rounded-none md:py-1.5", CELL, TONE[tone])}>
-      <p className="text-[0.66rem] font-semibold text-ink-3 md:hidden">{label}</p>
-      <span className="tnum hidden truncate text-[0.76rem] text-ink-3 md:inline">{s.amount ? money(s.amount) : ""}</span>
-      <p className={cx("tnum truncate text-[0.98rem] font-semibold md:text-right", s.qty === 0 && "text-ink-3")}>
+      <p className="text-micro font-semibold text-ink-3 md:hidden">{label}</p>
+      <span className="tnum hidden truncate text-caption text-ink-3 md:inline">{s.amount ? money(s.amount) : ""}</span>
+      <p className={cx("tnum truncate text-input font-semibold md:text-right", s.qty === 0 && "text-ink-3")}>
         {s.qty === 0 ? "—" : qty(s.qty)}
       </p>
-      <p className="tnum truncate text-[0.7rem] text-ink-3 md:hidden">{s.amount ? money(s.amount) : ""}</p>
+      <p className="tnum truncate text-caption text-ink-3 md:hidden">{s.amount ? money(s.amount) : ""}</p>
     </div>
   );
 }
@@ -239,7 +239,7 @@ function CategoryChip({ category }: { category: Category }) {
   return (
     <span
       className={cx(
-        "inline-flex w-[6.25rem] items-center justify-center gap-1.5 rounded-full px-2 py-1 text-[0.74rem] leading-none font-semibold ring-1",
+        "inline-flex w-[6.25rem] items-center justify-center gap-1.5 rounded-full px-2 py-1 text-caption leading-none font-semibold ring-1",
         categoryColor(category.color).chip,
       )}
       title={category.is_bread ? "Ekmek türü: tezgahta ek ürün olarak çıkmaz" : undefined}

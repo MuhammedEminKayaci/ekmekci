@@ -65,8 +65,8 @@ export function DayOrder({ day, items, onClose }: { day: string; items: Item[]; 
   }
 
   return (
-    <div className="animate-fade px-3 pb-4 sm:px-6 sm:pb-6">
-      <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-brand-soft/60 px-4 py-3 text-[0.9rem] text-ink-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="px-3 pb-4 sm:px-6 sm:pb-6">
+      <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-brand-soft/60 px-4 py-3 text-small text-ink-2 sm:flex-row sm:items-center sm:justify-between">
         <p>
           Müşteriyi soldaki <GripVertical size={15} className="inline align-[-2px]" /> tutamaktan tutup sürükleyin ya da
           sağdaki oklarla taşıyın. Bitince <b className="text-ink">Sırayı kaydet</b>&apos;e basın.
@@ -74,7 +74,7 @@ export function DayOrder({ day, items, onClose }: { day: string; items: Item[]; 
         <button
           type="button"
           onClick={() => setList((l) => [...l].sort((a, b) => a.name.localeCompare(b.name, "tr")))}
-          className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg px-2 py-1 text-[0.85rem] font-semibold text-brand-deep hover:bg-brand-soft sm:self-auto dark:text-brand"
+          className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg px-2 py-1 text-small font-semibold text-brand-deep hover:bg-brand-soft sm:self-auto dark:text-brand"
         >
           <ArrowDownAZ size={16} /> A–Z sırala
         </button>
@@ -145,10 +145,10 @@ function SortableRow({
       >
         <GripVertical size={20} />
       </button>
-      <span className="tnum grid size-8 shrink-0 place-items-center rounded-full bg-brand-soft text-[0.85rem] font-bold text-brand-deep dark:text-brand">
+      <span className="tnum grid size-8 shrink-0 place-items-center rounded-full bg-brand-soft text-small font-bold text-brand-deep dark:text-brand">
         {index + 1}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[1rem] font-semibold">{item.name}</span>
+      <span className="min-w-0 flex-1 truncate text-input font-semibold">{item.name}</span>
       <span className="flex shrink-0 gap-1">
         <button
           type="button"

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Veritabanı kurulum/aktarım araçları: uygulamanın parçası değil, düz Node betikleri.
+    "mssql/**",
   ]),
 ]);
 

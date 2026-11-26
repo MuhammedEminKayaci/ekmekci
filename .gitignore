@@ -50,3 +50,9 @@ supabase/.branches
 
 # veri tabanı yedekleri (müşteri verisi içerir)
 backups/
+
+# sunucuya yüklenecek paket (web.config gizli bilgi içerir)
+/deploy/out/
+
+# unslop denetim ham çıktıları
+plans/.*

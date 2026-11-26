@@ -45,7 +45,7 @@ function SideNavView({ isActive }: { isActive: IsActive }) {
             className={cx(
               "group flex min-h-14 items-center gap-3.5 rounded-2xl px-3.5 transition-all duration-300 ease-out",
               active
-                ? "bg-white text-[#0a5a32] shadow-[0_10px_24px_-10px_rgba(0,0,0,0.45)] dark:bg-white/12 dark:text-white"
+                ? "bg-white text-brand-strong dark:bg-white/12 dark:text-white"
                 : "text-white/80 hover:bg-white/10 hover:text-white",
             )}
           >
@@ -59,7 +59,7 @@ function SideNavView({ isActive }: { isActive: IsActive }) {
             </span>
             <span className="min-w-0">
               <span className="block font-semibold leading-tight">{label}</span>
-              <span className={cx("block truncate text-[0.75rem]", active ? "text-[#0a5a32]/70 dark:text-white/70" : "text-white/55")}>
+              <span className={cx("block truncate text-caption", active ? "text-brand-strong/70 dark:text-white/70" : "text-white/55")}>
                 {hint}
               </span>
             </span>
@@ -94,8 +94,8 @@ function TabBarView({ isActive }: { isActive: IsActive }) {
               href={href}
               aria-current={active ? "page" : undefined}
               className={cx(
-                "flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-1 rounded-[1rem] text-[0.58rem] font-semibold xs:text-[0.64rem] transition-all duration-300 ease-out",
-                active ? "brand-fill" : "text-ink-2 active:scale-95",
+                "flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-1 rounded-[1rem] text-micro font-semibold xs:text-micro transition-all duration-300 ease-out",
+                active ? "brand-fill" : "text-ink-2 active:scale-[0.96]",
               )}
             >
               <Icon size={19} strokeWidth={2.1} />

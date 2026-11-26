@@ -19,6 +19,8 @@
 
   --brand: #0f9150;
   --brand-deep: #0a6e3b;
+  /* Beyaz zemin üstündeki koyu marka yazısı (yan panel ve ana sayfadaki beyaz düğmeler; iki temada aynı). */
+  --brand-strong: #0a5a32;
   --brand-ink: #ffffff;
   --fill-a: #12a159;
   --fill-b: #0a6e3b;
@@ -49,6 +51,8 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
 
+  --shadow-pop: 0 18px 40px -16px rgba(16, 36, 26, 0.35);
+
   color-scheme: light;
 }
 
@@ -66,6 +70,7 @@
 
     --brand: #22b467;
     --brand-deep: #14904f;
+    --brand-strong: #0a5a32;
     --brand-ink: #ffffff;
     --fill-a: #15894b;
     --fill-b: #0c5e33;
@@ -93,8 +98,27 @@
     --series-sale: #1c9e5a;
     --series-collect: #5b8de0;
 
+    --shadow-pop: 0 18px 40px -16px rgba(0, 0, 0, 0.6);
+
     color-scheme: dark;
   }
+}
+
+/* Yazı ölçeği: bütün metin boyutları bu adımlardan gelir (text-micro … text-mega). */
+@theme {
+  --text-micro: 0.625rem;
+  --text-caption: 0.75rem;
+  --text-label: 0.8rem;
+  --text-small: 0.875rem;
+  --text-body: 0.9375rem;
+  --text-input: 1rem;
+  --text-lead: 1.125rem;
+  --text-title: 1.375rem;
+  --text-heading: 1.625rem;
+  --text-display: 2.125rem;
+  --text-headline: 2.5rem;
+  --text-hero: 2.875rem;
+  --text-mega: 3.5rem;
 }
 
 @theme inline {
@@ -109,6 +133,7 @@
   --color-edge-strong: var(--edge-strong);
   --color-brand: var(--brand);
   --color-brand-deep: var(--brand-deep);
+  --color-brand-strong: var(--brand-strong);
   --color-brand-ink: var(--brand-ink);
   --color-brand-soft: var(--brand-soft);
   --color-amber: var(--amber);
@@ -136,6 +161,11 @@
 /* -----------------------------------------------------------------------------
    Yüzeyler
 ----------------------------------------------------------------------------- */
+
+/* Gerçek katmanlar (açılır menü, öneri listesi, alt pencere, sabit rozet) için tek gölge. */
+@utility shadow-pop {
+  box-shadow: var(--shadow-pop);
+}
 
 @utility neu {
   background: var(--surface);
@@ -188,26 +218,9 @@
    Hareket — tek bir giriş dili: yumuşak yükselme. Hepsi reduced-motion'a uyar.
 ----------------------------------------------------------------------------- */
 
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 @keyframes fade {
   from {
     opacity: 0;
-  }
-}
-
-@keyframes grow-y {
-  from {
-    transform: scaleY(0);
   }
 }
 
@@ -245,61 +258,25 @@
   }
 }
 
-@keyframes draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-}
-
-@keyframes gauge {
-  from {
-    stroke-dashoffset: 100;
-  }
-}
-
 @keyframes pulse-soft {
   50% {
     opacity: 0.5;
   }
 }
 
-@utility animate-rise {
-  animation: rise 520ms var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 55ms);
-}
-
-@utility animate-fade {
-  animation: fade 360ms var(--ease-out) both;
-}
-
 @utility animate-pop {
-  animation: pop 360ms var(--ease-out) both;
-}
-
-@utility animate-grow {
-  transform-origin: bottom;
-  animation: grow-y 700ms var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 45ms + 150ms);
-}
-
-@utility animate-draw {
-  stroke-dasharray: 1;
-  animation: draw 1300ms var(--ease-out) 200ms both;
-}
-
-@utility animate-gauge {
-  animation: gauge 1200ms var(--ease-out) 250ms both;
+  animation: pop 180ms var(--ease-out) both;
 }
 
 @utility animate-toast {
-  animation: toast-in 380ms var(--ease-spring) both;
+  animation: toast-in 220ms var(--ease-out) both;
 }
 
 /* Tıklanabilir yüzeylerde hafif kalkma */
 @utility lift {
   transition:
-    transform 260ms var(--ease-out),
-    box-shadow 260ms var(--ease-out);
+    transform 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out);
   &:hover {
     transform: translateY(-2px);
   }
@@ -347,16 +324,16 @@ dialog::backdrop {
 }
 
 dialog[open]::backdrop {
-  animation: fade 300ms var(--ease-out) both;
+  animation: fade 180ms var(--ease-out) both;
 }
 
 dialog[open] {
-  animation: sheet-up 460ms var(--ease-spring) both;
+  animation: sheet-up 260ms var(--ease-spring) both;
 }
 
 @media (min-width: 40rem) {
   dialog[open] {
-    animation: sheet-in 360ms var(--ease-spring) both;
+    animation: sheet-in 220ms var(--ease-spring) both;
   }
 }
 

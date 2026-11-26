@@ -6,7 +6,7 @@ import { Banknote, BookUser, Check, HandCoins, Lock, Plus, ReceiptText, Settings
 import { AnimatedNumber } from "@/components/animated-number";
 import { Combobox } from "@/components/combobox";
 import { toast } from "@/components/toast";
-import { BalanceBadge, Button, IconChip, Tile, TileTitle, cx, inputClass, order } from "@/components/ui";
+import { BalanceBadge, Button, IconChip, Tile, TileTitle, cx, inputClass } from "@/components/ui";
 import { addExpense, createExpenseCategory, deleteExpense, deleteExpenseCategory } from "@/lib/actions";
 import { longDate, money, parseAmount, shortDate, weekdayShort } from "@/lib/format";
 
@@ -79,7 +79,7 @@ export function ExpensesView({
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
       {locked && (
-        <p className="flex items-center gap-2 rounded-2xl bg-bg-deep px-4 py-3 text-[0.9rem] font-medium text-ink-2">
+        <p className="flex items-center gap-2 rounded-2xl bg-bg-deep px-4 py-3 text-small font-medium text-ink-2">
           <Lock size={16} /> Geçmiş hafta kilitli; yalnızca görüntülenir.
         </p>
       )}
@@ -91,55 +91,55 @@ export function ExpensesView({
           { label: "Carilere yazılan gider", value: onAccount, icon: BookUser, tone: "amber" as const, hint: "Cari bizden alacaklı olur" },
           { label: "Carilere ödenen", value: paid, icon: HandCoins, tone: "sky" as const, hint: "Alacağı kapatır, gider değil" },
           { label: "Kasadan çıkan", value: cashOut, icon: Banknote, tone: "brand" as const, hint: "Peşin gider + cari ödeme" },
-        ].map((k, i) => (
-          <div key={k.label} style={order(i + 1)} className="neu animate-rise rounded-tile p-4 sm:p-5">
-            <p className="flex items-center gap-2 text-[0.8rem] font-semibold text-ink-2">
+        ].map((k) => (
+          <div key={k.label} className="neu rounded-tile p-4 sm:p-5">
+            <p className="flex items-center gap-2 text-label font-semibold text-ink-2">
               <IconChip icon={k.icon} tone={k.tone} size="sm" /> <span className="min-w-0 truncate">{k.label}</span>
             </p>
-            <p className="tnum mt-2.5 truncate font-display text-[1.35rem] font-semibold sm:text-[1.7rem]">
+            <p className="tnum mt-2.5 truncate font-display text-title font-semibold sm:text-heading">
               <AnimatedNumber value={k.value} />
             </p>
-            <p className="truncate text-[0.74rem] text-ink-3">{k.hint}</p>
+            <p className="truncate text-caption text-ink-3">{k.hint}</p>
           </div>
         ))}
       </div>
 
       <div className="grid gap-4 sm:gap-5 lg:grid-cols-12">
         {/* Giriş (solda) */}
-        <Tile i={5} className="lg:col-span-7">
-          <TileTitle icon={<IconChip icon={Plus} tone="brand" size="sm" />} aside={<span className="text-[0.8rem] font-semibold text-ink-3">{longDate(day)}</span>}>
+        <Tile className="lg:col-span-7">
+          <TileTitle icon={<IconChip icon={Plus} tone="brand" size="sm" />} aside={<span className="text-label font-semibold text-ink-3">{longDate(day)}</span>}>
             Kayıt gir
           </TileTitle>
           {locked ? (
-            <p className="rounded-xl bg-bg-deep/60 px-3.5 py-3 text-[0.88rem] text-ink-2">Bu gün kilitli; kayıt girilemez.</p>
+            <p className="rounded-xl bg-bg-deep/60 px-3.5 py-3 text-small text-ink-2">Bu gün kilitli; kayıt girilemez.</p>
           ) : (
             <EntryForm day={day} drivers={drivers.filter((d) => d.is_active)} customers={customers} types={types} isAdmin={isAdmin} />
           )}
         </Tile>
 
         {/* Özet (sağda) */}
-        <section style={order(6)} className="animate-rise flex flex-col overflow-hidden rounded-tile shadow-[0_24px_48px_-24px_rgba(120,20,20,0.4)] lg:col-span-5">
+        <section className="flex flex-col overflow-hidden rounded-tile lg:col-span-5">
           <div className="relative overflow-hidden bg-debt p-5 text-white sm:p-6">
             <div className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-white/[0.08]" aria-hidden />
-            <h2 className="relative flex items-center gap-2 font-display text-[1.05rem] font-semibold">
+            <h2 className="relative flex items-center gap-2 font-display text-input font-semibold">
               <ReceiptText size={18} /> {periodName} toplam gideri
             </h2>
-            <p className="relative mt-3 font-display tnum text-[2.6rem] leading-none font-semibold tracking-[-0.03em] sm:text-[3rem]">
+            <p className="relative mt-3 font-display tnum text-headline leading-none font-semibold tracking-[-0.03em] sm:text-hero">
               <AnimatedNumber value={totalCost} />
             </p>
-            <p className="relative mt-2 text-[0.82rem] text-white/80">
+            <p className="relative mt-2 text-label text-white/80">
               {from === to ? longDate(from) : `${shortDate(from)} – ${shortDate(to)}`}
             </p>
           </div>
           <div className="flex flex-1 flex-col gap-4 bg-surface p-5 sm:p-6">
             {typeRows.length === 0 ? (
-              <p className="py-4 text-center text-[0.85rem] text-ink-3">Bu dönemde gider yok.</p>
+              <p className="py-4 text-center text-small text-ink-3">Bu dönemde gider yok.</p>
             ) : (
               <div>
-                <p className="mb-2 text-[0.74rem] font-semibold tracking-wide text-ink-3 uppercase">Türe göre</p>
+                <p className="mb-2 text-caption font-semibold text-ink-3">Türe göre</p>
                 <ul className="scroll-soft tnum flex max-h-56 flex-col gap-2 overflow-y-auto pr-1">
                   {typeRows.map(([name, v]) => (
-                    <li key={name} className="text-[0.88rem]">
+                    <li key={name} className="text-small">
                       <div className="flex justify-between gap-3">
                         <span className="truncate font-semibold">{name}</span>
                         <span className="font-semibold">{money(v)}</span>
@@ -154,10 +154,10 @@ export function ExpensesView({
             )}
             {byPlace.size > 0 && (
               <div className="mt-auto border-t border-line pt-3">
-                <p className="mb-1.5 text-[0.74rem] font-semibold tracking-wide text-ink-3 uppercase">Yere göre</p>
+                <p className="mb-1.5 text-caption font-semibold text-ink-3">Yere göre</p>
                 <div className="tnum flex flex-wrap gap-1.5">
                   {[...byPlace].map(([k, v]) => (
-                    <span key={k} className="rounded-full bg-bg-deep px-3 py-1 text-[0.8rem]">
+                    <span key={k} className="rounded-full bg-bg-deep px-3 py-1 text-label">
                       <b className="font-semibold">{k}</b> {money(v)}
                     </span>
                   ))}
@@ -169,18 +169,18 @@ export function ExpensesView({
       </div>
 
       {/* Hareket tablosu */}
-      <section style={order(7)} className="neu animate-rise rounded-tile">
+      <section className="neu rounded-tile">
         <div className="flex items-center justify-between gap-3 p-5 sm:p-6">
-          <h2 className="flex items-center gap-2.5 font-display text-[1.15rem] font-semibold tracking-tight">
+          <h2 className="flex items-center gap-2.5 font-display text-lead font-semibold tracking-tight">
             <IconChip icon={Wallet} tone="amber" size="sm" /> Hareketler
           </h2>
-          <span className="text-[0.82rem] text-ink-3">{expenses.length} kayıt · en yeni üstte</span>
+          <span className="text-label text-ink-3">{expenses.length} kayıt · en yeni üstte</span>
         </div>
         {expenses.length === 0 ? (
-          <p className="mx-5 mb-5 rounded-xl bg-bg-deep/60 px-3.5 py-3 text-[0.88rem] text-ink-2 sm:mx-6">Bu dönemde kayıt yok.</p>
+          <p className="mx-5 mb-5 rounded-xl bg-bg-deep/60 px-3.5 py-3 text-small text-ink-2 sm:mx-6">Bu dönemde kayıt yok.</p>
         ) : (
           <>
-            <div className={cx("hidden border-y border-line text-[0.76rem] font-semibold text-ink-3", GRID)}>
+            <div className={cx("hidden border-y border-line text-caption font-semibold text-ink-3", GRID)}>
               <span className="flex items-center px-5 py-2.5">Tarih</span>
               <span className={cx(CELL, "py-2.5")}>Hesap</span>
               <span className={cx(CELL, "py-2.5")}>İşlem</span>
@@ -195,7 +195,7 @@ export function ExpensesView({
                 <LedgerRow key={e.id} e={e} place={placeLabel(e)} customer={e.customer_id ? customer.get(e.customer_id) : undefined} locked={locked} />
               ))}
             </ul>
-            <div className={cx("tnum flex flex-wrap justify-end gap-x-6 gap-y-1 border-t-2 border-ink/70 px-5 py-3 text-[0.88rem] sm:px-6")}>
+            <div className={cx("tnum flex flex-wrap justify-end gap-x-6 gap-y-1 border-t-2 border-ink/70 px-5 py-3 text-small sm:px-6")}>
               <span>
                 Gider <b className="text-debt">{money(totalCost)}</b>
               </span>
@@ -231,10 +231,10 @@ function LedgerRow({ e, place, customer, locked }: { e: Expense; place: string; 
         pending && "opacity-50",
       )}
     >
-      <span className="tnum flex items-center text-[0.82rem] text-ink-2 lg:px-5">
+      <span className="tnum flex items-center text-label text-ink-2 lg:px-5">
         {shortDate(e.entry_date)} <span className="ml-1 text-ink-3">{weekdayShort(e.entry_date)}</span>
         <span className="ml-auto lg:hidden">
-          <b className={cx("text-[1rem]", isPayment ? "text-sky" : "text-debt")}>{money(e.amount)}</b>
+          <b className={cx("text-input", isPayment ? "text-sky" : "text-debt")}>{money(e.amount)}</b>
         </span>
       </span>
       <span className={cx("mt-1 min-w-0 truncate font-semibold lg:mt-0", CELL)}>
@@ -249,15 +249,15 @@ function LedgerRow({ e, place, customer, locked }: { e: Expense; place: string; 
       <span className={cx("hidden", CELL)}>
         <span
           className={cx(
-            "inline-flex w-[5.75rem] justify-center rounded-full px-2 py-1 text-[0.72rem] leading-none font-semibold",
-            isPayment ? "bg-sky-500/12 text-sky-700 dark:text-sky-300" : "bg-debt-soft text-debt",
+            "inline-flex w-[5.75rem] justify-center rounded-full px-2 py-1 text-caption leading-none font-semibold",
+            isPayment ? "bg-sky-soft text-sky" : "bg-debt-soft text-debt",
           )}
         >
           {isPayment ? "Cari ödeme" : "Gider"}
         </span>
       </span>
-      <span className={cx("hidden min-w-0 truncate text-[0.88rem]", CELL)}>{e.category || "—"}</span>
-      <span className={cx("block min-w-0 truncate text-[0.82rem] text-ink-3 lg:text-[0.88rem] lg:text-ink-2", CELL)}>
+      <span className={cx("hidden min-w-0 truncate text-small", CELL)}>{e.category || "—"}</span>
+      <span className={cx("block min-w-0 truncate text-label text-ink-3 lg:text-small lg:text-ink-2", CELL)}>
         <span className="lg:hidden">
           {isPayment ? "Cari ödeme" : e.category || "Gider"}
           {e.payment === "account" ? " · cariye yazıldı" : ""}
@@ -266,7 +266,7 @@ function LedgerRow({ e, place, customer, locked }: { e: Expense; place: string; 
         {e.description || <span className="hidden lg:inline">—</span>}
         {customer && <span className="text-ink-3 lg:hidden"> · {place}</span>}
       </span>
-      <span className={cx("hidden text-[0.82rem]", CELL)}>
+      <span className={cx("hidden text-label", CELL)}>
         {isPayment ? "Nakit" : e.payment === "account" ? <b className="font-semibold text-amber">Cariye</b> : "Peşin"}
       </span>
       <span className={cx("tnum hidden justify-end font-semibold", CELL, isPayment ? "text-sky" : "text-debt")}>{money(e.amount)}</span>
@@ -393,10 +393,10 @@ function EntryForm({
 
   const chip = (active: boolean) =>
     cx(
-      "inline-flex min-h-9 items-center gap-1 rounded-full px-3.5 text-[0.84rem] font-semibold transition-all duration-200",
+      "inline-flex min-h-9 items-center gap-1 rounded-full px-3.5 text-small font-semibold transition-all duration-200",
       active ? "brand-fill" : "bg-bg-deep text-ink-2 hover:text-ink",
     );
-  const label = "mb-1.5 text-[0.8rem] font-semibold text-ink-2";
+  const label = "mb-1.5 text-label font-semibold text-ink-2";
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
@@ -443,7 +443,7 @@ function EntryForm({
         )}
         {picked && picked.balance < 0 && kind === "expense" && (
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-amber-soft px-3.5 py-2.5">
-            <span className="text-[0.86rem]">
+            <span className="text-small">
               {picked.name}&apos;a borcumuz <b className="tnum">{money(-picked.balance)}</b>
             </span>
             <button
@@ -452,18 +452,18 @@ function EntryForm({
                 setKind("payment");
                 setAmount(String(-picked.balance).replace(".", ","));
               }}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-surface px-3.5 text-[0.84rem] font-semibold text-ink ring-1 ring-edge hover:ring-brand"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-surface px-3.5 text-small font-semibold text-ink ring-1 ring-edge hover:ring-brand"
             >
               <HandCoins size={15} /> Ödeme yap
             </button>
           </div>
         )}
         {kind === "payment" && picked && (
-          <p className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-sky-500/10 px-3.5 py-2.5 text-[0.86rem]">
+          <p className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-sky-soft px-3.5 py-2.5 text-small">
             <span>
-              <b>{picked.name}</b>&apos;a ödeme — borcumuzdan düşülür, gider sayılmaz.
+              <b>{picked.name}</b>&apos;a ödeme: borcumuzdan düşülür, gider sayılmaz.
             </span>
-            <button type="button" onClick={() => setKind("expense")} className="shrink-0 rounded-lg px-2 py-1 text-[0.8rem] font-semibold text-ink-3 hover:text-ink">
+            <button type="button" onClick={() => setKind("expense")} className="shrink-0 rounded-lg px-2 py-1 text-label font-semibold text-ink-3 hover:text-ink">
               Vazgeç
             </button>
           </p>
@@ -471,7 +471,7 @@ function EntryForm({
       </div>
 
       {kind === "expense" && picked && (
-        <p className="-mt-1 text-[0.78rem] text-ink-3">
+        <p className="-mt-1 text-label text-ink-3">
           Gider {picked.name} hesabına yazılır; {picked.name} bu tutar kadar bizden alacaklı olur.
         </p>
       )}
@@ -479,12 +479,12 @@ function EntryForm({
       {kind === "expense" && (
         <div>
           <div className="mb-1.5 flex items-center justify-between gap-2">
-            <p className="text-[0.8rem] font-semibold text-ink-2">Gider türü</p>
+            <p className="text-label font-semibold text-ink-2">Gider türü</p>
             {isAdmin && types.length > 0 && (
               <button
                 type="button"
                 onClick={() => setManaging((v) => !v)}
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[0.76rem] font-semibold text-ink-3 hover:bg-bg-deep hover:text-ink"
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-caption font-semibold text-ink-3 hover:bg-bg-deep hover:text-ink"
               >
                 <Settings2 size={13} /> {managing ? "Bitti" : "Türleri düzenle"}
               </button>
@@ -525,7 +525,7 @@ function EntryForm({
                     maxLength={40}
                     placeholder="Yeni tür"
                     aria-label="Yeni gider türü"
-                    className="w-28 bg-transparent text-[0.84rem] font-semibold outline-none"
+                    className="w-28 bg-transparent text-small font-semibold outline-none"
                   />
                   <button type="button" disabled={!newType.trim() || typePending} onClick={addType} className="grid size-7 place-items-center rounded-full brand-fill disabled:opacity-50" aria-label="Türü ekle">
                     <Check size={14} strokeWidth={3} />
@@ -538,7 +538,7 @@ function EntryForm({
                 <button
                   type="button"
                   onClick={() => setAdding(true)}
-                  className="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-edge-strong px-3 text-[0.84rem] font-semibold text-ink-2 hover:border-brand hover:text-brand-deep"
+                  className="inline-flex min-h-9 items-center gap-1 rounded-full border border-dashed border-edge-strong px-3 text-small font-semibold text-ink-2 hover:border-brand hover:text-brand-deep"
                 >
                   <Plus size={14} /> Tür ekle
                 </button>
@@ -554,7 +554,7 @@ function EntryForm({
           inputMode="decimal"
           placeholder="Tutar ₺"
           aria-label="Tutar"
-          className={cx(inputClass, "min-h-12 text-right text-[1.05rem] font-semibold")}
+          className={cx(inputClass, "min-h-12 text-right text-input font-semibold")}
         />
         <input
           value={description}

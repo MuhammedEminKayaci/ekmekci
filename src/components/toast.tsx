@@ -41,7 +41,7 @@ export function Toaster() {
           key={t.id}
           role={t.tone === "error" ? "alert" : "status"}
           className={cx(
-            "neu animate-toast pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl px-4 py-3 text-[0.92rem] font-semibold",
+            "neu animate-toast pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl px-4 py-3 text-body font-semibold",
             t.tone === "ok" ? "text-ink" : "text-debt",
           )}
         >

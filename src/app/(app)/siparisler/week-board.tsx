@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   ArrowDownLeft,
   ArrowUpDown,
@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { Sheet } from "@/components/sheet";
 import { toast } from "@/components/toast";
-import { Balance, BalanceBadge, Button, Empty, IconChip, cx, inputClass, order } from "@/components/ui";
+import { Balance, BalanceBadge, Button, Empty, IconChip, cx, inputClass } from "@/components/ui";
 import { AllView } from "./all-view";
 import { DayOrder } from "./day-order";
 import { DriverDay, type DayExpense } from "./driver-day";
@@ -206,7 +206,7 @@ export function WeekBoard({
     <div className="flex flex-col gap-6">
       {/* Gün şeridi */}
       <div className="grid grid-cols-7 gap-1.5 xs:gap-2 sm:gap-3" role="tablist" aria-label="Haftanın günleri">
-        {days.map((d, i) => {
+        {days.map((d) => {
           const list = byDay.get(d) ?? [];
           const active = d === day;
           const isToday = d === today;
@@ -217,28 +217,28 @@ export function WeekBoard({
               role="tab"
               aria-selected={active}
               onClick={() => selectDay(d)}
-              style={order(i)}
+             
               className={cx(
-                "animate-rise relative flex min-w-0 flex-col items-center gap-0.5 rounded-2xl px-1 py-2.5 transition-all duration-300 ease-out sm:items-start sm:px-4 sm:py-3.5",
+                "relative flex min-w-0 flex-col items-center gap-0.5 rounded-2xl px-1 py-2.5 transition-all duration-300 ease-out sm:items-start sm:px-4 sm:py-3.5",
                 active ? "brand-fill -translate-y-0.5" : "neu-sm hover:-translate-y-0.5",
               )}
             >
-              <span className={cx("text-[0.72rem] font-semibold sm:text-[0.8rem]", active ? "text-white/85" : "text-ink-2")}>
+              <span className={cx("text-caption font-semibold sm:text-label", active ? "text-white/85" : "text-ink-2")}>
                 {weekdayShort(d)}
               </span>
-              <span className={cx("font-display tnum text-[1.3rem] leading-none font-semibold sm:text-[1.6rem]", !active && "text-ink")}>
+              <span className={cx("font-display tnum text-title leading-none font-semibold sm:text-heading", !active && "text-ink")}>
                 {Number(d.slice(8))}
               </span>
-              <span className={cx("tnum mt-1.5 hidden text-[0.75rem] sm:block", active ? "text-white/80" : "text-ink-3")}>
+              <span className={cx("tnum mt-1.5 hidden text-caption sm:block", active ? "text-white/80" : "text-ink-3")}>
                 {list.length ? `${new Set(list.map((r) => r.customer_id)).size} müşteri` : "Kayıt yok"}
               </span>
-              <span className={cx("tnum hidden max-w-full truncate text-[0.85rem] font-semibold sm:block", active ? "text-white" : "text-ink-2")}>
+              <span className={cx("tnum hidden max-w-full truncate text-small font-semibold sm:block", active ? "text-white" : "text-ink-2")}>
                 {list.length ? money(sum(list, net)) : "—"}
               </span>
               {isToday && (
                 <span
                   className={cx(
-                    "mt-1 rounded-full px-1.5 text-[0.6rem] font-bold sm:absolute sm:top-3 sm:right-3 sm:mt-0 sm:px-2 sm:text-[0.66rem]",
+                    "mt-1 rounded-full px-1.5 text-micro font-bold sm:absolute sm:top-3 sm:right-3 sm:mt-0 sm:px-2 sm:text-micro",
                     active ? "bg-white/20 text-white" : "bg-brand-soft text-brand-deep dark:text-brand",
                   )}
                 >
@@ -254,29 +254,29 @@ export function WeekBoard({
       </div>
 
       {/* Gün paneli */}
-      <section key={day} className="neu animate-rise rounded-tile">
+      <section key={day} className="neu rounded-tile">
         <div className="flex flex-col gap-4 p-5 sm:p-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="font-display text-[1.45rem] font-semibold tracking-tight">
+            <h2 className="font-display text-title font-semibold tracking-tight">
               {weekdayLong(day)}
-              <span className="ml-2 font-sans text-[0.95rem] font-medium text-ink-3">{longDate(day)}</span>
+              <span className="ml-2 font-sans text-body font-medium text-ink-3">{longDate(day)}</span>
             </h2>
             {ordering ? (
-              <p className="mt-1 inline-flex items-center gap-1.5 text-[0.88rem] font-semibold text-brand-deep dark:text-brand">
+              <p className="mt-1 inline-flex items-center gap-1.5 text-small font-semibold text-brand-deep dark:text-brand">
                 <ArrowUpDown size={15} /> Müşteri sırasını düzenliyorsunuz.
               </p>
             ) : locked ? (
-              <p className="mt-1 inline-flex items-center gap-1.5 text-[0.88rem] text-ink-2">
+              <p className="mt-1 inline-flex items-center gap-1.5 text-small text-ink-2">
                 <Lock size={14} /> Geçmiş hafta. Kayıtlar sadece görüntülenir, değiştirilemez.
               </p>
             ) : (
               dayRows.length > 0 && (
-                <p className="mt-1 text-[0.88rem] text-ink-2 xl:hidden">Sayıları yazmanız yeterli, her şey otomatik kaydedilir.</p>
+                <p className="mt-1 text-small text-ink-2 xl:hidden">Sayıları yazmanız yeterli, her şey otomatik kaydedilir.</p>
               )
             )}
             {!locked && !ordering && dayRows.length > 0 && (
-              <p className="mt-1 hidden text-[0.88rem] text-ink-2 xl:block">
-                Kutucuğa yazın, <kbd className="rounded-md bg-bg-deep px-1.5 py-0.5 text-[0.78rem] font-semibold">Enter</kbd> ile
+              <p className="mt-1 hidden text-small text-ink-2 xl:block">
+                Kutucuğa yazın, <kbd className="rounded-md bg-bg-deep px-1.5 py-0.5 text-label font-semibold">Enter</kbd> ile
                 sonrakine geçin. Her şey otomatik kaydedilir.
               </p>
             )}
@@ -324,14 +324,14 @@ export function WeekBoard({
                   aria-selected={active}
                   onClick={() => selectTab(t.id)}
                   className={cx(
-                    "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-[0.9rem] font-semibold transition-all duration-300",
+                    "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-small font-semibold transition-all duration-300",
                     active ? "brand-fill" : "neu-sm text-ink-2 hover:text-ink",
                   )}
                 >
                   {t.label}
                   <span
                     className={cx(
-                      "tnum min-w-6 rounded-full px-1.5 text-[0.75rem]",
+                      "tnum min-w-6 rounded-full px-1.5 text-caption",
                       active ? "bg-white/20" : "bg-bg-deep text-ink-3",
                     )}
                   >
@@ -345,7 +345,7 @@ export function WeekBoard({
           <button
             type="button"
             onClick={() => setManaging(true)}
-            className="ml-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-[0.85rem] font-semibold text-ink-2 hover:bg-brand-soft hover:text-ink"
+            className="ml-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-small font-semibold text-ink-2 hover:bg-brand-soft hover:text-ink"
           >
             <Settings2 size={16} /> Dağıtıcılar
           </button>
@@ -370,7 +370,7 @@ export function WeekBoard({
           locked ? (
             <Empty title="Bu gün için kayıt yok" />
           ) : (
-            <div className="animate-fade px-5 pb-8 sm:px-6">
+            <div className="px-5 pb-8 sm:px-6">
               <ol className="grid gap-3 md:grid-cols-3">
                 {[
                   { title: "Müşteri ekleyin", text: "“Müşteri ekle” ile bu gün ekmek verdiğiniz müşterileri seçin." },
@@ -378,11 +378,11 @@ export function WeekBoard({
                   { title: "Gerisi otomatik", text: "Tutar, borç ve alacak müşterinin fiyatıyla anında hesaplanır." },
                 ].map((s, i) => (
                   <li key={s.title} className="neu-inset rounded-2xl p-4">
-                    <span className="brand-fill mb-3 grid size-8 place-items-center rounded-full text-[0.9rem] font-bold">
+                    <span className="brand-fill mb-3 grid size-8 place-items-center rounded-full text-small font-bold">
                       {i + 1}
                     </span>
                     <p className="font-semibold">{s.title}</p>
-                    <p className="mt-0.5 text-[0.88rem] text-ink-2">{s.text}</p>
+                    <p className="mt-0.5 text-small text-ink-2">{s.text}</p>
                   </li>
                 ))}
               </ol>
@@ -390,7 +390,7 @@ export function WeekBoard({
           )
         ) : (
           <>
-            <div className={cx("hidden border-y border-line px-6 py-3 text-[0.8rem] font-semibold text-ink-3", GRID)}>
+            <div className={cx("hidden border-y border-line px-6 py-3 text-label font-semibold text-ink-3", GRID)}>
               <span>Müşteri</span>
               <span className={cx("grid gap-2", LINE_GRID)}>
                 <span>Ürün</span>
@@ -405,10 +405,9 @@ export function WeekBoard({
               <span />
             </div>
             <ul className="flex flex-col gap-3 px-3 pb-3 sm:px-4 xl:gap-0 xl:px-0 xl:pb-0">
-              {dayRows.map((r, i) => (
+              {dayRows.map((r) => (
                 <OrderRow
                   key={r.id}
-                  index={i}
                   row={r}
                   total={totals(r.customer_id)}
                   products={customerProducts.get(r.customer_id) ?? []}
@@ -458,6 +457,10 @@ export function WeekBoard({
 
 // --- Satır -------------------------------------------------------------------
 
+/** Kutudaki metin: 0 ise boş (yer tutucu "0" görünür). */
+const qtyText = (v: number) => (v ? String(v) : "");
+const moneyText = (v: number) => (v ? (Number.isInteger(v) ? String(v) : v.toFixed(2).replace(".", ",")) : "");
+
 function focusNext(current: HTMLInputElement) {
   const all = Array.from(document.querySelectorAll<HTMLInputElement>("input[data-entry]:not([readonly])"));
   const i = all.indexOf(current);
@@ -473,6 +476,8 @@ function NumberBox({
   readOnly,
   onChange,
   onCommit,
+  onEdit,
+  failed = false,
   ariaLabel,
 }: {
   label: string;
@@ -482,11 +487,15 @@ function NumberBox({
   readOnly: boolean;
   onChange: (v: string) => void;
   onCommit: () => void;
+  /** Kutuya girildi: bu sırada sunucudan gelen değer kutunun üstüne yazılmaz. */
+  onEdit?: () => void;
+  /** Son kayıt denemesi başarısız: kutudan bir sonraki çıkışta yeniden denenir. */
+  failed?: boolean;
   ariaLabel: string;
 }) {
   return (
     <label className="flex min-w-0 flex-col gap-1 xl:block">
-      <span className="text-[0.74rem] font-semibold text-ink-2 xl:sr-only">{label}</span>
+      <span className="text-caption font-semibold text-ink-2 xl:sr-only">{label}</span>
       <span className="relative block">
         <input
           value={value}
@@ -497,7 +506,12 @@ function NumberBox({
           placeholder="0"
           autoComplete="off"
           aria-label={ariaLabel}
-          onFocus={(e) => e.currentTarget.select()}
+          aria-invalid={failed || undefined}
+          title={failed ? "Kaydedilemedi. Kutudan çıkınca yeniden denenecek." : undefined}
+          onFocus={(e) => {
+            onEdit?.();
+            e.currentTarget.select();
+          }}
           onChange={(e) => onChange(e.target.value.replace(decimal ? /[^\d.,]/g : /\D/g, ""))}
           onBlur={onCommit}
           onKeyDown={(e) => {
@@ -508,11 +522,12 @@ function NumberBox({
           }}
           className={cx(
             inputClass,
-            "min-h-11 py-1.5 pr-3 pl-10 text-right text-[1.02rem] font-semibold",
+            "min-h-11 py-1.5 pr-3 pl-10 text-right text-input font-semibold",
             readOnly && "bg-transparent shadow-none",
+            failed && "ring-2 ring-debt",
           )}
         />
-        <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[0.72rem] font-semibold text-ink-3">
+        <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-caption font-semibold text-ink-3">
           {unit}
         </span>
       </span>
@@ -522,7 +537,6 @@ function NumberBox({
 
 function OrderRow({
   row,
-  index,
   total,
   products,
   readOnly,
@@ -530,18 +544,29 @@ function OrderRow({
   onLine,
 }: {
   row: BoardRow;
-  index: number;
   total: number;
   products: CustomerProduct[];
   readOnly: boolean;
   onDraft: (patch: Partial<BoardRow>) => void;
   onLine: (lineId: number, patch: Partial<BoardLine>) => void;
 }) {
-  const [collectionText, setCollectionText] = useState(
-    row.collection ? (Number.isInteger(row.collection) ? String(row.collection) : row.collection.toFixed(2).replace(".", ",")) : "",
-  );
+  const [collectionText, setCollectionText] = useState(moneyText(row.collection));
   const [savedCollection, setSavedCollection] = useState(row.collection);
+  const [editing, setEditing] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
+  const typedCollection = Math.round(Math.max(0, parseAmount(collectionText) ?? 0) * 100) / 100;
+
+  // Başka cihazdan gelen tahsilat: kutuda değilken ve kaydedilmemiş değişiklik yokken kutuya yaz.
+  const [seenCollection, setSeenCollection] = useState(row.collection);
+  if (row.collection !== seenCollection) {
+    setSeenCollection(row.collection);
+    if (!editing && !failed && typedCollection === savedCollection) {
+      setCollectionText(moneyText(row.collection));
+      setSavedCollection(row.collection);
+    }
+  }
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, startDelete] = useTransition();
   const [addingLine, startAddLine] = useTransition();
@@ -558,17 +583,25 @@ function OrderRow({
     return () => clearTimeout(t);
   }, [state]);
 
-  async function commitCollection() {
-    if (row.collection === savedCollection) return;
+  // Kaydedilecek değer kutunun kendi metninden gelir; istekler sırayla gider.
+  function commitCollection() {
+    setEditing(false);
+    const value = typedCollection;
+    if (value === savedCollection && !failed) return;
     setState("saving");
-    const res = await saveCollection(row.id, row.collection);
-    if (res.ok && res.data) {
-      setSavedCollection(res.data.collection);
-      setState("saved");
-    } else if (!res.ok) {
-      setState("idle");
-      toast(`${row.customer_name}: ${res.error}`, "error");
-    }
+    queue.current = queue.current.then(async () => {
+      const res = await saveCollection(row.id, value);
+      if (res.ok && res.data) {
+        setSavedCollection(res.data.collection);
+        setFailed(false);
+        onDraft({ collection: res.data.collection });
+        setState("saved");
+      } else if (!res.ok) {
+        setFailed(true);
+        setState("idle");
+        toast(`${row.customer_name}: ${res.error}`, "error");
+      }
+    });
   }
 
   const rowNet = net(row);
@@ -585,8 +618,7 @@ function OrderRow({
 
   return (
     <li
-      style={order(index)}
-      className="neu-sm animate-rise rounded-2xl p-4 xl:rounded-none xl:border-b xl:border-line xl:bg-transparent xl:px-6 xl:py-2.5 xl:shadow-none xl:transition-colors xl:hover:bg-brand-soft/30"
+      className="neu-sm rounded-2xl p-4 xl:rounded-none xl:border-b xl:border-line xl:bg-transparent xl:px-6 xl:py-2.5 xl:shadow-none xl:transition-colors xl:hover:bg-brand-soft/30"
     >
       <div className={cx("flex flex-col gap-3 xl:gap-y-0", GRID)}>
         {/* Müşteri */}
@@ -594,7 +626,7 @@ function OrderRow({
           <div className="flex min-w-0 items-center gap-1.5">
             <Link
               href={`/musteriler/${row.customer_id}`}
-              className="truncate text-[1.02rem] font-semibold text-ink hover:text-brand-deep dark:hover:text-brand"
+              className="truncate text-input font-semibold text-ink hover:text-brand-deep dark:hover:text-brand"
             >
               {row.customer_name}
             </Link>
@@ -612,7 +644,7 @@ function OrderRow({
         {/* Ürün satırları */}
         <div className="flex flex-col gap-2 xl:gap-1.5">
           {row.lines.length === 0 && (
-            <p className="flex min-h-11 items-center rounded-xl bg-bg-deep/60 px-3 text-[0.85rem] text-ink-2">
+            <p className="flex min-h-11 items-center rounded-xl bg-bg-deep/60 px-3 text-small text-ink-2">
               {readOnly || missing.length === 0 ? "Ürün yok — sadece para alındı." : "Ürün yok — sağdaki + ile ekleyin ya da sadece parayı yazın."}
             </p>
           )}
@@ -643,13 +675,15 @@ function OrderRow({
               onDraft({ collection: Math.max(0, parseAmount(v) ?? 0) });
             }}
             onCommit={commitCollection}
+            onEdit={() => setEditing(true)}
+            failed={failed}
             ariaLabel={`${row.customer_name} tahsilat`}
           />
         </div>
 
         {/* Mobil: sonuç */}
         <div className="flex flex-wrap items-center gap-2 xl:contents">
-          <p className="tnum flex-1 rounded-xl bg-bg-deep/70 px-3 py-2 text-[0.85rem] text-ink-2 xl:hidden">
+          <p className="tnum flex-1 rounded-xl bg-bg-deep/70 px-3 py-2 text-small text-ink-2 xl:hidden">
             Tutar <b className="text-ink">{money(rowNet)}</b> · Ödenen <b className="text-ink">{money(row.collection)}</b>
             {tone !== "zero" && (
               <>
@@ -662,20 +696,20 @@ function OrderRow({
           </p>
 
           <div className="order-last flex basis-full items-center justify-between gap-3 rounded-xl border border-edge px-3 py-2 xl:hidden">
-            <span className="text-[0.82rem] font-semibold text-ink-2">Toplam hesap</span>
+            <span className="text-label font-semibold text-ink-2">Toplam hesap</span>
             <span className="flex items-center gap-2">
               <Balance value={total} />
               <BalanceBadge value={total} kind="total" />
             </span>
           </div>
 
-          <p className="tnum hidden min-h-11 items-center justify-end text-[1rem] font-semibold xl:flex">{money(rowNet)}</p>
+          <p className="tnum hidden min-h-11 items-center justify-end text-input font-semibold xl:flex">{money(rowNet)}</p>
           <div className="hidden min-h-11 flex-col items-end justify-center xl:flex">
             <Balance value={rowDelta} />
             <BalanceBadge value={rowDelta} kind="delta" />
           </div>
           <div className="hidden min-h-11 flex-col items-end justify-center xl:flex">
-            <Balance value={total} className="text-[1.02rem]" />
+            <Balance value={total} className="text-input" />
             <BalanceBadge value={total} kind="total" />
           </div>
 
@@ -699,7 +733,7 @@ function OrderRow({
                     : setConfirmDelete(true)
                 }
                 className={cx(
-                  "inline-flex h-10 items-center justify-center gap-1.5 rounded-xl text-[0.82rem] font-semibold whitespace-nowrap transition-all duration-200",
+                  "inline-flex h-10 items-center justify-center gap-1.5 rounded-xl text-label font-semibold whitespace-nowrap transition-all duration-200",
                   confirmDelete ? "bg-debt px-3 text-white" : "w-10 text-ink-3 hover:bg-debt-soft hover:text-debt",
                 )}
                 aria-label={confirmDelete ? "Silmeyi onayla" : `${row.customer_name} satırını sil`}
@@ -761,9 +795,9 @@ function AddLineMenu({
       {open && (
         <div
           role="menu"
-          className="animate-pop absolute top-full right-0 z-30 mt-1.5 flex w-52 flex-col gap-0.5 rounded-2xl border border-edge bg-surface p-1.5 shadow-[0_18px_40px_-16px_rgba(0,0,0,0.35)]"
+          className="animate-pop absolute top-full right-0 z-30 mt-1.5 flex w-52 flex-col gap-0.5 rounded-2xl border border-edge bg-surface p-1.5 shadow-pop"
         >
-          <p className="px-2.5 pt-1 pb-1.5 text-[0.72rem] font-semibold text-ink-3">Ürün ekle</p>
+          <p className="px-2.5 pt-1 pb-1.5 text-caption font-semibold text-ink-3">Ürün ekle</p>
           {products.map((p) => (
             <button
               key={p.product_id}
@@ -773,10 +807,10 @@ function AddLineMenu({
                 setOpen(false);
                 onPick(p.product_id);
               }}
-              className="flex min-h-10 items-center justify-between gap-3 rounded-xl px-2.5 text-left text-[0.9rem] font-semibold hover:bg-brand-soft"
+              className="flex min-h-10 items-center justify-between gap-3 rounded-xl px-2.5 text-left text-small font-semibold hover:bg-brand-soft"
             >
               <span className="truncate">{p.name}</span>
-              <span className="tnum shrink-0 text-[0.78rem] font-medium text-ink-3">{money(p.price)}</span>
+              <span className="tnum shrink-0 text-label font-medium text-ink-3">{money(p.price)}</span>
             </button>
           ))}
         </div>
@@ -803,11 +837,27 @@ function LineRow({
   onSaved: (order: OrderTotals) => void;
   onError: () => void;
 }) {
-  const [d, setD] = useState(line.delivered_qty ? String(line.delivered_qty) : "");
-  const [r, setR] = useState(line.returned_qty ? String(line.returned_qty) : "");
+  const [d, setD] = useState(qtyText(line.delivered_qty));
+  const [r, setR] = useState(qtyText(line.returned_qty));
   const [saved, setSaved] = useState({ d: line.delivered_qty, r: line.returned_qty });
+  const [editing, setEditing] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
   const [removing, startRemove] = useTransition();
   const [ok, setOk] = useState(false);
+  const typedD = Math.max(0, Math.trunc(parseAmount(d) ?? 0));
+  const typedR = Math.max(0, Math.trunc(parseAmount(r) ?? 0));
+
+  // Başka cihazdan gelen adet: kutuda değilken ve kaydedilmemiş değişiklik yokken kutuya yaz.
+  const [seen, setSeen] = useState({ d: line.delivered_qty, r: line.returned_qty });
+  if (seen.d !== line.delivered_qty || seen.r !== line.returned_qty) {
+    setSeen({ d: line.delivered_qty, r: line.returned_qty });
+    if (!editing && !failed && typedD === saved.d && typedR === saved.r) {
+      setD(qtyText(line.delivered_qty));
+      setR(qtyText(line.returned_qty));
+      setSaved({ d: line.delivered_qty, r: line.returned_qty });
+    }
+  }
 
   useEffect(() => {
     if (!ok) return;
@@ -815,18 +865,27 @@ function LineRow({
     return () => clearTimeout(t);
   }, [ok]);
 
-  async function commit() {
-    if (line.delivered_qty === saved.d && line.returned_qty === saved.r) return;
-    const res = await saveLine(line.id, line.delivered_qty, line.returned_qty);
-    if (res.ok && res.data) {
-      setSaved({ d: res.data.line.delivered_qty, r: res.data.line.returned_qty });
-      onDraft({ unit_price: Number(res.data.line.unit_price) });
-      onSaved(res.data.order);
-      setOk(true);
-    } else if (!res.ok) {
-      onError();
-      toast(`${customerName}: ${res.error}`, "error");
-    }
+  // Kaydedilecek değer kutuların kendi metninden gelir; aynı satırın istekleri sırayla gider.
+  function commit() {
+    setEditing(false);
+    const dv = typedD;
+    const rv = typedR;
+    if (dv === saved.d && rv === saved.r && !failed) return;
+    queue.current = queue.current.then(async () => {
+      const res = await saveLine(line.id, dv, rv);
+      if (res.ok && res.data) {
+        const l = res.data.line;
+        setSaved({ d: l.delivered_qty, r: l.returned_qty });
+        setFailed(false);
+        onDraft({ delivered_qty: l.delivered_qty, returned_qty: l.returned_qty, unit_price: Number(l.unit_price) });
+        onSaved(res.data.order);
+        setOk(true);
+      } else if (!res.ok) {
+        setFailed(true);
+        onError();
+        toast(`${customerName}: ${res.error}`, "error");
+      }
+    });
   }
 
   const unit = line.product_unit || "adet";
@@ -836,9 +895,9 @@ function LineRow({
   return (
     <div className={cx("grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 xl:items-center", LINE_GRID)}>
       <div className="col-span-2 flex min-w-0 items-center gap-2 xl:col-span-1">
-        <p className="min-w-0 truncate text-[0.9rem] font-semibold">
+        <p className="min-w-0 truncate text-small font-semibold">
           {line.product_name}
-          <span className="tnum ml-1.5 text-[0.76rem] font-medium text-ink-3">{money(line.unit_price)}</span>
+          <span className="tnum ml-1.5 text-caption font-medium text-ink-3">{money(line.unit_price)}</span>
         </p>
         {ok && <Check size={13} strokeWidth={3} className="animate-pop shrink-0 text-brand-deep dark:text-brand" />}
         {!readOnly && removable && empty && (
@@ -869,6 +928,8 @@ function LineRow({
           onDraft({ delivered_qty: Math.max(0, Math.trunc(parseAmount(v) ?? 0)) });
         }}
         onCommit={commit}
+        onEdit={() => setEditing(true)}
+        failed={failed}
         ariaLabel={`${customerName} ${line.product_name} verilen`}
       />
       <NumberBox
@@ -881,9 +942,11 @@ function LineRow({
           onDraft({ returned_qty: Math.max(0, Math.trunc(parseAmount(v) ?? 0)) });
         }}
         onCommit={commit}
+        onEdit={() => setEditing(true)}
+        failed={failed}
         ariaLabel={`${customerName} ${line.product_name} iade`}
       />
-      <p className="tnum hidden text-right text-[0.88rem] font-semibold text-ink-2 xl:block">{money(amount)}</p>
+      <p className="tnum hidden text-right text-small font-semibold text-ink-2 xl:block">{money(amount)}</p>
     </div>
   );
 }
@@ -902,16 +965,16 @@ function DayTotals({ rows }: { rows: BoardRow[] }) {
         <div key={it.label} className="flex items-center gap-3">
           <IconChip icon={it.icon} tone={it.tone} size="sm" />
           <div className="min-w-0">
-            <p className="text-[0.75rem] font-semibold text-ink-3">{it.label}</p>
-            <p className="tnum truncate font-display text-[1.1rem] font-semibold">{it.value}</p>
+            <p className="text-caption font-semibold text-ink-3">{it.label}</p>
+            <p className="tnum truncate font-display text-lead font-semibold">{it.value}</p>
           </div>
         </div>
       ))}
       <div className="col-span-2 flex items-center gap-3 md:col-span-1">
         <IconChip icon={Scale} tone={balanceTone(dayDelta) === "debt" ? "debt" : "brand"} size="sm" />
         <div>
-          <p className="text-[0.75rem] font-semibold text-ink-3">Günün sonucu</p>
-          <Balance value={dayDelta} className="font-display text-[1.1rem]" />
+          <p className="text-caption font-semibold text-ink-3">Günün sonucu</p>
+          <Balance value={dayDelta} className="font-display text-lead" />
         </div>
       </div>
     </div>
@@ -976,7 +1039,7 @@ function AddCustomersForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-[0.9rem] text-ink-2">Bu gün ekmek verdiğiniz müşterilere dokunun, sonra alttaki yeşil butona basın.</p>
+      <p className="text-small text-ink-2">Bu gün ekmek verdiğiniz müşterilere dokunun, sonra alttaki yeşil butona basın.</p>
       <div className="relative">
         <Search size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-ink-3" />
         <input
@@ -988,7 +1051,7 @@ function AddCustomersForm({
         />
       </div>
 
-      <div className="flex items-center justify-between text-[0.88rem]">
+      <div className="flex items-center justify-between text-small">
         <span className="font-semibold text-ink-2">{picked.size} müşteri seçildi</span>
         <button
           type="button"
@@ -1015,9 +1078,9 @@ function AddCustomersForm({
                   on ? "bg-brand-soft ring-2 ring-brand" : "neu-sm",
                 )}
               >
-                <span className="min-w-0 truncate text-[1rem] font-semibold">{c.name}</span>
+                <span className="min-w-0 truncate text-input font-semibold">{c.name}</span>
                 <span className="flex shrink-0 items-center gap-3">
-                  <span className="tnum max-w-[45%] truncate text-[0.8rem] text-ink-3">{c.products.map((p) => p.name).join(" · ") || "Ürün yok"}</span>
+                  <span className="tnum max-w-[45%] truncate text-label text-ink-3">{c.products.map((p) => p.name).join(" · ") || "Ürün yok"}</span>
                   <span
                     className={cx(
                       "grid size-7 place-items-center rounded-full transition-all duration-200",
@@ -1034,7 +1097,7 @@ function AddCustomersForm({
         {visible.length === 0 && <li className="py-6 text-center text-ink-2">Aramaya uyan müşteri yok.</li>}
       </ul>
 
-      <Button variant="primary" onClick={submit} disabled={pending || picked.size === 0} className="min-h-14 w-full text-[1rem]">
+      <Button variant="primary" onClick={submit} disabled={pending || picked.size === 0} className="min-h-14 w-full text-input">
         {pending ? "Ekleniyor…" : picked.size ? `${picked.size} müşteriyi ekle` : "Önce müşteri seçin"}
       </Button>
     </div>

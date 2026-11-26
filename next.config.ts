@@ -1,11 +1,8 @@
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV !== "production";
-const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-// Canlı güncelleme Supabase Realtime'a websocket ile bağlanır.
-const supabaseWs = supabase.replace(/^http/, "ws");
-
-// Sayfa yalnızca kendi sunucusundan betik/stil yükler ve yalnızca Supabase'e bağlanır.
+// Sayfa yalnızca kendi sunucusundan betik/stil yükler ve yalnızca kendi sunucusuna bağlanır
+// (veritabanına yalnızca sunucu bağlanır; tarayıcı hiçbir dış adrese gitmez).
 // 'unsafe-inline' Next.js'in sayfa içi başlatma betikleri için gerekli; dış kaynaklı betik yasak.
 const csp = [
   "default-src 'self'",
@@ -13,7 +10,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
-  `connect-src 'self' ${supabase} ${supabaseWs}${isDev ? " ws: wss:" : ""}`.trim(),
+  `connect-src 'self'${isDev ? " ws: wss:" : ""}`,
   "frame-ancestors 'none'",
   "frame-src 'none'",
   "object-src 'none'",
@@ -37,6 +34,10 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
+  // Sunucuya (IIS + iisnode) yalnızca gereken dosyalar gitsin: .next/standalone
+  output: "standalone",
+  // Veritabanı sürücüsü paketlenmeden Node'un kendi modülü olarak yüklensin.
+  serverExternalPackages: ["mssql", "tedious"],
   // Uygulama next/image kullanmıyor; görsel optimizasyon uç noktası tamamen kapalı.
   images: { unoptimized: true },
   async headers() {

@@ -13,7 +13,6 @@ import {
   Tile,
   TileTitle,
   TypeChip,
-  order,
 } from "@/components/ui";
 import {
   addDays,
@@ -28,7 +27,9 @@ import {
   weekRangeLabel,
   weekStart,
 } from "@/lib/format";
-import { createClient } from "@/lib/supabase/server";
+import { day, isoDay, num, proc, query, type Row } from "@/lib/db";
+import { getCatalog, getCustomers } from "@/lib/reports";
+import { requireUser } from "@/lib/session";
 import { CustomerActions, PriceAction, ProductPrices, type OwnedProduct } from "./customer-actions";
 
 export const metadata: Metadata = { title: "Müşteri" };
@@ -61,24 +62,32 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
   if (!Number.isInteger(id) || id <= 0) notFound();
 
   const group: Group = sp.grup === "week" || sp.grup === "month" ? sp.grup : "day";
-  const supabase = await createClient();
+  await requireUser();
   const today = todayTR();
   const [from, to] = rangeFor(group, today);
 
-  const [{ data: customer }, { data: prices }, { data: catalog }, { data: statement }] = await Promise.all([
-    supabase.from("customer_overview").select("*").eq("id", id).maybeSingle(),
-    supabase
-      .from("customer_prices")
-      .select("id, price, valid_from, product_id")
-      .eq("customer_id", id)
-      .order("valid_from", { ascending: false }),
-    supabase.from("products").select("id, name, unit, suggested_price").eq("is_active", true).order("sort_order"),
-    supabase.rpc("get_customer_statement", { p_customer_id: id, p_from: from, p_to: to, p_group: group }),
+  const [customerRows, priceRows, catalog, statement] = await Promise.all([
+    getCustomers("CustomerId = @Id", { Id: id }),
+    query<Row>(`SELECT CustomerPriceId, Price, ValidFrom, ProductId FROM dbo.CustomerPrices WHERE CustomerId = @Id ORDER BY ValidFrom DESC`, { Id: id }),
+    getCatalog(),
+    proc("dbo.sp_Customer_Statement", { CustomerId: id, From: day(from), To: day(to), Group: group }),
   ]);
+  const customer = customerRows[0];
+  if (!customer) notFound();
+  const prices = priceRows.map((p) => ({ id: p.CustomerPriceId as number, price: num(p.Price), valid_from: isoDay(p.ValidFrom)!, product_id: p.ProductId as number }));
 
-  if (!customer || customer.id == null) notFound();
-
-  const rows = [...(statement ?? [])].reverse();
+  const rows = (statement.sets[0] as Row[])
+    .map((r) => ({
+      period_start: isoDay(r.PeriodStart)!,
+      delivered_qty: num(r.DeliveredQty),
+      returned_qty: num(r.ReturnedQty),
+      net_amount: num(r.NetAmount),
+      collection: num(r.Collection),
+      account_delta: num(r.AccountDelta),
+      period_delta: num(r.PeriodDelta),
+      running_balance: num(r.RunningBalance),
+    }))
+    .reverse();
   const hasAccount = rows.some((r) => Number(r.account_delta) !== 0);
   const STMT_GRID = hasAccount
     ? "lg:grid-cols-[minmax(10rem,1.6fr)_repeat(7,minmax(5.5rem,1fr))]"
@@ -91,19 +100,19 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
 
   return (
     <>
-      <Link href="/musteriler" className="animate-rise mb-4 inline-flex min-h-10 items-center gap-1 rounded-xl pr-3 text-[0.9rem] font-semibold text-ink-2 transition-colors hover:text-brand-deep">
+      <Link href="/musteriler" className="mb-4 inline-flex min-h-10 items-center gap-1 rounded-xl pr-3 text-small font-semibold text-ink-2 transition-colors hover:text-brand-deep">
         <ChevronLeft size={17} /> Müşteriler
       </Link>
 
-      <header className="animate-rise mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+      <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <TypeChip type={customer.type ?? 1} />
             {!customer.is_active && (
-              <span className="rounded-full bg-bg-deep px-2 py-0.5 text-[0.72rem] font-semibold text-ink-2">Pasif</span>
+              <span className="rounded-full bg-bg-deep px-2 py-0.5 text-caption font-semibold text-ink-2">Pasif</span>
             )}
           </div>
-          <h1 className="font-display text-[2rem] leading-[1.05] font-semibold tracking-[-0.02em] break-words sm:text-[2.6rem]">
+          <h1 className="font-display text-display leading-[1.05] font-semibold tracking-[-0.02em] break-words sm:text-headline">
             {customer.name}
           </h1>
         </div>
@@ -121,22 +130,22 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
       </header>
 
       <div className="grid gap-4 sm:gap-5 md:grid-cols-6">
-        <Tile i={1} className="md:col-span-3 lg:col-span-2">
+        <Tile className="md:col-span-3 lg:col-span-2">
           <TileTitle icon={<IconChip icon={Wallet} tone={Number(customer.balance ?? 0) > 0 ? "debt" : "brand"} size="sm" />}>
             Güncel hesap
           </TileTitle>
           <p>
-            <Balance value={Number(customer.balance ?? 0)} className="font-display text-[2.4rem] leading-none tracking-[-0.02em] sm:text-[2.8rem]" />
+            <Balance value={Number(customer.balance ?? 0)} className="font-display text-headline leading-none tracking-[-0.02em] sm:text-hero" />
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <BalanceBadge value={Number(customer.balance ?? 0)} />
             {customer.last_entry_date && (
-              <span className="text-[0.8rem] text-ink-3">Son kayıt {shortDate(customer.last_entry_date)}</span>
+              <span className="text-label text-ink-3">Son kayıt {shortDate(customer.last_entry_date)}</span>
             )}
           </div>
         </Tile>
 
-        <Tile i={2} className="md:col-span-3 lg:col-span-2">
+        <Tile className="md:col-span-3 lg:col-span-2">
           <TileTitle
             icon={<IconChip icon={Tag} tone="amber" size="sm" />}
             aside={customer.buys_products === false ? undefined : <PriceAction customerId={id} today={today} owned={owned} addable={addable} />}
@@ -144,39 +153,39 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
             Ürünler ve fiyatlar
           </TileTitle>
           {customer.buys_products === false ? (
-            <p className="text-[0.9rem] text-ink-2">Ürün almaz — yalnızca cari hesap (giderler ve ödemeler). Kartı düzenleyerek değiştirebilirsiniz.</p>
+            <p className="text-small text-ink-2">Ürün almaz — yalnızca cari hesap (giderler ve ödemeler). Kartı düzenleyerek değiştirebilirsiniz.</p>
           ) : (
           <ProductPrices customerId={id} owned={owned.map((p) => ({ ...p, history: p.history.map((h) => Number(h.price)) }))} />
           )}
         </Tile>
 
-        <Tile i={3} className="md:col-span-6 lg:col-span-2">
+        <Tile className="md:col-span-6 lg:col-span-2">
           <TileTitle icon={<IconChip icon={IdCard} tone="sky" size="sm" />}>Kart bilgileri</TileTitle>
-          <dl className="flex flex-col gap-3 text-[0.9rem]">
+          <dl className="flex flex-col gap-3 text-small">
             <div>
-              <dt className="text-[0.78rem] font-semibold text-ink-3">Adres</dt>
+              <dt className="text-label font-semibold text-ink-3">Adres</dt>
               <dd className="text-ink">{customer.address || "—"}</dd>
             </div>
             <div>
-              <dt className="text-[0.78rem] font-semibold text-ink-3">Not</dt>
+              <dt className="text-label font-semibold text-ink-3">Not</dt>
               <dd className="whitespace-pre-line text-ink">{customer.note || "—"}</dd>
             </div>
             {customer.created_at && (
               <div>
-                <dt className="text-[0.78rem] font-semibold text-ink-3">Kayıt tarihi</dt>
+                <dt className="text-label font-semibold text-ink-3">Kayıt tarihi</dt>
                 <dd className="text-ink">{longDate(customer.created_at.slice(0, 10))}</dd>
               </div>
             )}
           </dl>
         </Tile>
 
-        <section style={order(4)} className="neu animate-rise rounded-tile md:col-span-6">
+        <section className="neu rounded-tile md:col-span-6">
           <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div>
-              <h2 className="flex items-center gap-2.5 font-display text-[1.15rem] font-semibold tracking-tight">
+              <h2 className="flex items-center gap-2.5 font-display text-lead font-semibold tracking-tight">
                 <IconChip icon={FileText} tone="brand" size="sm" /> Hesap dökümü
               </h2>
-              <p className="text-[0.85rem] text-ink-3">
+              <p className="text-small text-ink-3">
                 {shortDate(from)} – {shortDate(to)} · en yeni üstte
               </p>
             </div>
@@ -190,7 +199,7 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
             <Empty title="Bu aralıkta hareket yok">Siparişler sayfasından bu müşteriye kayıt girildiğinde burada görünür.</Empty>
           ) : (
             <>
-              <div className={`hidden border-y border-line px-6 py-2.5 text-[0.78rem] font-semibold text-ink-3 lg:grid ${STMT_GRID} lg:gap-4`}>
+              <div className={`hidden border-y border-line px-6 py-2.5 text-label font-semibold text-ink-3 lg:grid ${STMT_GRID} lg:gap-4`}>
                 <span>Dönem</span>
                 <span className="text-right">Verilen</span>
                 <span className="text-right">İade</span>
@@ -212,7 +221,7 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
                         <Balance value={r.running_balance} />
                       </p>
                     </div>
-                    <dl className="tnum grid grid-cols-3 gap-x-3 gap-y-2 text-[0.88rem] lg:contents">
+                    <dl className="tnum grid grid-cols-3 gap-x-3 gap-y-2 text-small lg:contents">
                       <Cell label="Verilen" value={qty(r.delivered_qty)} />
                       <Cell label="İade" value={qty(r.returned_qty)} />
                       <Cell label="Tutar" value={money(r.net_amount)} />
@@ -237,7 +246,7 @@ async function Detail({ params, searchParams }: { params: Params; searchParams: 
 function Cell({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="lg:text-right">
-      <dt className="text-[0.72rem] font-semibold text-ink-3 lg:sr-only">{label}</dt>
+      <dt className="text-caption font-semibold text-ink-3 lg:sr-only">{label}</dt>
       <dd>{value}</dd>
     </div>
   );

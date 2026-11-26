@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader, Skeleton, WeekNav } from "@/components/ui";
 import { addDays, isISODate, todayTR, weekDays, weekStart } from "@/lib/format";
-import { getSessionProfile } from "@/lib/session";
-import { createClient } from "@/lib/supabase/server";
+import { day as dbDay, isoDay, num, proc, query, type Row } from "@/lib/db";
+import { requireUser } from "@/lib/session";
 import type { DayExpense } from "./driver-day";
 import { WeekBoard, type BoardCustomer, type BoardDriver, type BoardLine, type BoardRow, type CustomerProduct } from "./week-board";
 
@@ -13,66 +13,62 @@ type Search = Promise<{ hafta?: string; gun?: string }>;
 
 async function Board({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;
-  const supabase = await createClient();
+  const profile = await requireUser();
   const today = todayTR();
   const currentWeek = weekStart(today);
   const start = weekStart(isISODate(sp.hafta) ? sp.hafta : today);
   const days = weekDays(start);
   const day = isISODate(sp.gun) && days.includes(sp.gun) ? sp.gun : days.includes(today) ? today : start;
 
-  const end = addDays(start, 6);
-  const profile = await getSessionProfile();
-  const [{ data: rows }, { data: lines }, { data: customers }, { data: settings }, { data: drivers }, { data: expenses }, { data: driverDays }] = await Promise.all([
-    supabase.rpc("get_week_board", { p_date: start }),
-    supabase.rpc("get_week_lines", { p_date: start }),
-    supabase
-      .from("customer_overview")
-      .select("id, name, type, products, is_active, buys_products, balance")
-      .order("name"),
-    supabase.from("app_settings").select("lock_past_weeks").maybeSingle(),
-    supabase.from("drivers").select("id, name, is_owner, is_active").order("sort_order"),
-    supabase
-      .from("expenses")
-      .select("id, entry_date, driver_id, amount, category, description")
-      .eq("place", "driver")
-      .gte("entry_date", start)
-      .lte("entry_date", end)
-      .order("created_at"),
-    supabase.from("driver_days").select("entry_date, driver_id, handed_over").gte("entry_date", start).lte("entry_date", end),
+  const [{ sets }, customers, drivers] = await Promise.all([
+    proc("dbo.sp_Week_Board", { Date: dbDay(start) }),
+    query<Row>(`SELECT CustomerId, Name, CustomerTypeId, Products, IsActive, BuysProducts, Balance FROM dbo.vw_CustomerOverview ORDER BY Name`),
+    query<Row>(`SELECT DriverId, Name, IsOwner, IsActive FROM dbo.Drivers ORDER BY SortOrder, DriverId`),
   ]);
+  const [rows, lines, expenses, driverDays] = sets as Row[][];
 
   const hrefFor = (offset: number) => `/siparisler?hafta=${addDays(start, offset * 7)}`;
-  const locked = (settings?.lock_past_weeks ?? true) && start < currentWeek;
-  const all = customers ?? [];
+  const locked = rows[0]?.IsLocked ?? (await query<{ L: boolean }>("SELECT L = dbo.fn_IsLocked(@D)", { D: dbDay(start) }))[0]?.L ?? false;
   // Sipariş + ürün satırları
   const linesByOrder = new Map<number, BoardLine[]>();
-  for (const l of lines ?? []) {
-    const list = linesByOrder.get(l.order_id) ?? [];
+  for (const l of lines) {
+    const list = linesByOrder.get(l.OrderId) ?? [];
     list.push({
-      id: l.id,
-      product_id: l.product_id,
-      product_name: l.product_name,
-      product_unit: l.product_unit,
-      delivered_qty: l.delivered_qty,
-      returned_qty: l.returned_qty,
-      unit_price: Number(l.unit_price),
+      id: l.OrderLineId,
+      product_id: l.ProductId,
+      product_name: l.ProductName,
+      product_unit: l.ProductUnit,
+      delivered_qty: l.DeliveredQty,
+      returned_qty: l.ReturnedQty,
+      unit_price: num(l.UnitPrice),
     });
-    linesByOrder.set(l.order_id, list);
+    linesByOrder.set(l.OrderId, list);
   }
-  const boardRows: BoardRow[] = (rows ?? []).map((r) => ({
-    id: r.id,
-    customer_id: r.customer_id,
-    customer_name: r.customer_name,
-    customer_type: r.customer_type,
-    driver_id: r.driver_id,
-    entry_date: r.entry_date,
-    sort_order: r.sort_order,
-    collection: Number(r.collection),
-    is_locked: r.is_locked,
-    lines: linesByOrder.get(r.id) ?? [],
+  const boardRows: BoardRow[] = rows.map((r) => ({
+    id: r.OrderId,
+    customer_id: r.CustomerId,
+    customer_name: r.CustomerName,
+    customer_type: r.CustomerTypeId,
+    driver_id: r.DriverId,
+    entry_date: isoDay(r.EntryDate)!,
+    sort_order: r.SortOrder,
+    collection: num(r.Collection),
+    is_locked: r.IsLocked,
+    lines: linesByOrder.get(r.OrderId) ?? [],
+  }));
+  const all = customers.map((c) => ({
+    id: c.CustomerId as number,
+    name: c.Name as string,
+    type: c.CustomerTypeId as number,
+    is_active: c.IsActive as boolean,
+    buys_products: c.BuysProducts as boolean,
+    balance: num(c.Balance),
+    products: (JSON.parse(c.Products || "[]") as Array<{ ProductId: number; Name: string; Unit: string; Price: number | null }>).map(
+      (p) => ({ product_id: p.ProductId, name: p.Name, unit: p.Unit, price: p.Price == null ? null : Number(p.Price) }),
+    ),
   }));
   // Müşterinin bütün geçmişiyle güncel toplam hesabı (+ borç, − alacak).
-  const balances = Object.fromEntries(all.map((c) => [c.id!, Number(c.balance ?? 0)]));
+  const balances = Object.fromEntries(all.map((c) => [c.id, c.balance]));
 
   return (
     <>
@@ -91,12 +87,23 @@ async function Board({ searchParams }: { searchParams: Search }) {
         initialDay={day}
         locked={locked}
         rows={boardRows}
-        customers={all.filter((c) => c.is_active && c.buys_products !== false).map((c) => ({ id: c.id!, name: c.name!, type: c.type!, products: (c.products ?? []) as CustomerProduct[] })) as BoardCustomer[]}
+        customers={all.filter((c) => c.is_active && c.buys_products).map((c) => ({ id: c.id, name: c.name, type: c.type, products: c.products as CustomerProduct[] })) as BoardCustomer[]}
         balances={balances}
-        isAdmin={profile?.isAdmin ?? false}
-        drivers={(drivers ?? []) as BoardDriver[]}
-        expenses={(expenses ?? []) as DayExpense[]}
-        driverDays={(driverDays ?? []).map((d) => ({ ...d, handed_over: d.handed_over == null ? null : Number(d.handed_over) }))}
+        isAdmin={profile.isAdmin}
+        drivers={drivers.map((d) => ({ id: d.DriverId, name: d.Name, is_owner: d.IsOwner, is_active: d.IsActive })) as BoardDriver[]}
+        expenses={expenses.map((e) => ({
+          id: e.ExpenseId,
+          entry_date: isoDay(e.EntryDate)!,
+          driver_id: e.DriverId,
+          amount: num(e.Amount),
+          category: e.CategoryName,
+          description: e.Description,
+        })) as DayExpense[]}
+        driverDays={driverDays.map((d) => ({
+          entry_date: isoDay(d.EntryDate)!,
+          driver_id: d.DriverId as number,
+          handed_over: d.HandedOver == null ? null : num(d.HandedOver),
+        }))}
       />
     </>
   );

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Brand } from "@/components/brand";
 import { Credit } from "@/components/credit";
 import { LoginForm } from "./login-form";
@@ -13,9 +14,11 @@ export default function LoginPage() {
           <Brand />
         </div>
         <div className="neu rounded-tile p-6 sm:p-8">
-          <h1 className="font-display text-[1.6rem] font-semibold tracking-tight">Giriş yap</h1>
+          <h1 className="font-display text-heading font-semibold tracking-tight">Giriş yap</h1>
           <p className="mt-1 mb-6 text-ink-2">Hesabınız yöneticiniz tarafından açılır.</p>
-          <LoginForm />
+          <Suspense>
+            <LoginForm />
+          </Suspense>
         </div>
       </div>
       <Credit />

@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { ChevronRight, HandCoins, Plus, Search, Users, Wallet } from "lucide-react";
 import { AnimatedNumber } from "@/components/animated-number";
 import { Sheet } from "@/components/sheet";
-import { Balance, BalanceBadge, Button, Empty, PageHeader, Stat, TypeChip, cx, inputClass, order } from "@/components/ui";
+import { Balance, BalanceBadge, Button, Empty, PageHeader, Stat, TypeChip, cx, inputClass } from "@/components/ui";
 import { balanceTone, money, shortDate } from "@/lib/format";
 import { CustomerForm, type CatalogProduct } from "./customer-form";
 
@@ -93,7 +93,7 @@ export function CustomerList({
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:mb-8 sm:grid-cols-3 sm:gap-5">
-        <div style={order(1)} className="neu animate-rise col-span-2 rounded-tile p-5 sm:col-span-1">
+        <div className="neu col-span-2 rounded-tile p-5 sm:col-span-1">
           <Stat
             icon={Wallet}
             tone="debt"
@@ -102,7 +102,7 @@ export function CustomerList({
             hint="Borçlu müşterilerin toplamı"
           />
         </div>
-        <div style={order(2)} className="neu animate-rise rounded-tile p-5">
+        <div className="neu rounded-tile p-5">
           <Stat
             icon={HandCoins}
             tone="brand"
@@ -110,12 +110,12 @@ export function CustomerList({
             value={<span className="text-credit"><AnimatedNumber value={Math.abs(totals.credit)} /></span>}
           />
         </div>
-        <div style={order(3)} className="neu animate-rise rounded-tile p-5">
+        <div className="neu rounded-tile p-5">
           <Stat icon={Users} tone="sky" label="Aktif müşteri" value={totals.active} hint={`${customers.length} kayıtlı`} />
         </div>
       </div>
 
-      <section style={order(4)} className="neu animate-rise rounded-tile">
+      <section className="neu rounded-tile">
         <div className="flex flex-col gap-3 p-4 sm:p-5 md:flex-row md:items-center md:justify-between">
           <div className="relative md:w-96">
             <Search size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-ink-3" />
@@ -135,7 +135,7 @@ export function CustomerList({
                 aria-pressed={filter === f.value}
                 onClick={() => setFilter(f.value)}
                 className={cx(
-                  "min-h-10 rounded-full px-4 text-[0.85rem] font-semibold transition-all duration-300",
+                  "min-h-10 rounded-full px-4 text-small font-semibold transition-all duration-300",
                   filter === f.value ? "brand-fill" : "text-ink-2 hover:text-ink",
                 )}
               >
@@ -158,7 +158,7 @@ export function CustomerList({
           )
         ) : (
           <>
-            <div className={cx("hidden border-y border-line px-6 py-3 text-[0.8rem] font-semibold text-ink-3", ROW_GRID)}>
+            <div className={cx("hidden border-y border-line px-6 py-3 text-label font-semibold text-ink-3", ROW_GRID)}>
               <span>Müşteri</span>
               <span className="text-right">Ürünler ve fiyatlar</span>
               <span className="text-right">Son kayıt</span>
@@ -166,8 +166,8 @@ export function CustomerList({
               <span />
             </div>
             <ul key={filter} className="flex flex-col gap-2.5 px-3 pb-3 sm:px-4 md:gap-0 md:px-0 md:pb-2">
-              {visible.map((c, i) => (
-                <li key={c.id} style={order(Math.min(i, 12))} className="animate-rise">
+              {visible.map((c) => (
+                <li key={c.id}>
                   <Link
                     href={`/musteriler/${c.id}`}
                     className={cx(
@@ -178,17 +178,17 @@ export function CustomerList({
                   >
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-2">
-                        <span className="truncate text-[1.02rem] font-semibold text-ink">{c.name}</span>
+                        <span className="truncate text-input font-semibold text-ink">{c.name}</span>
                         <TypeChip type={c.type} />
                       </p>
-                      <p className="tnum mt-0.5 truncate text-[0.8rem] text-ink-3 md:hidden">
+                      <p className="tnum mt-0.5 truncate text-label text-ink-3 md:hidden">
                         {c.buys_products === false ? "Cari (ürün almaz)" : productsText(c.products)}
                         {c.last_entry_date ? ` · son kayıt ${shortDate(c.last_entry_date)}` : ""}
                       </p>
-                      {c.address && <p className="hidden truncate text-[0.8rem] text-ink-3 md:block">{c.address}</p>}
+                      {c.address && <p className="hidden truncate text-label text-ink-3 md:block">{c.address}</p>}
                     </div>
-                    <span className="tnum hidden truncate text-right text-[0.88rem] text-ink-2 md:block">
-                      {c.buys_products === false ? <span className="rounded-full bg-amber-soft px-2.5 py-1 text-[0.76rem] font-semibold text-amber">Cari · ürün almaz</span> : productsText(c.products)}
+                    <span className="tnum hidden truncate text-right text-small text-ink-2 md:block">
+                      {c.buys_products === false ? <span className="rounded-full bg-amber-soft px-2.5 py-1 text-caption font-semibold text-amber">Cari · ürün almaz</span> : productsText(c.products)}
                     </span>
                     <span className="tnum hidden text-right text-ink-2 md:block">
                       {c.last_entry_date ? shortDate(c.last_entry_date) : "—"}

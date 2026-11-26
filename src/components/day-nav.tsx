@@ -35,8 +35,8 @@ export function DayNav({
         <ChevronLeft size={22} strokeWidth={2.4} />
       </Link>
       <div className="neu-inset flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center rounded-control px-4 text-center sm:min-w-60 sm:flex-none">
-        <span className="text-[0.92rem] font-semibold whitespace-nowrap">{title}</span>
-        {sub && <span className="text-[0.72rem] font-semibold text-ink-3">{sub}</span>}
+        <span className="text-body font-semibold whitespace-nowrap">{title}</span>
+        {sub && <span className="text-caption font-semibold text-ink-3">{sub}</span>}
       </div>
       <Link href={nav(next)} className={buttonClass("soft", "w-12 px-0")} aria-label={`Sonraki ${label}`} scroll={false}>
         <ChevronRight size={22} strokeWidth={2.4} />

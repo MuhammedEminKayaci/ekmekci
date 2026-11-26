@@ -17,7 +17,7 @@ import {
 import { AnimatedNumber } from "@/components/animated-number";
 import { Delta, Gauge, Sparkline } from "@/components/charts";
 import { PairChart } from "@/components/pair-chart";
-import { Balance, ButtonLink, IconChip, Skeleton, Tile, TileTitle, cx, order } from "@/components/ui";
+import { Balance, ButtonLink, IconChip, Skeleton, Tile, TileTitle, cx } from "@/components/ui";
 import {
   addDays,
   longDate,
@@ -31,7 +31,9 @@ import {
   weekdayLong,
   weekdayShort,
 } from "@/lib/format";
-import { createClient } from "@/lib/supabase/server";
+import { day, num, query, type Row } from "@/lib/db";
+import { getCustomers, getTotals } from "@/lib/reports";
+import { requireUser } from "@/lib/session";
 
 const DATIVE: Record<string, string> = {
   pazartesi: "pazartesiye",
@@ -72,7 +74,7 @@ function sumRange(map: Map<string, Totals>, from: string, to: string) {
 }
 
 async function Dashboard() {
-  const supabase = await createClient();
+  await requireUser(); // oturum (istek anına bağlar; tarih hesabı bundan sonra)
   const today = todayTR();
   const thisWeek = weekStart(today);
   const lastWeek = addDays(thisWeek, -7);
@@ -80,16 +82,21 @@ async function Dashboard() {
   const month = monthStart(today);
   const from14 = addDays(today, -13);
 
-  const [{ data: daily }, { data: weeks }, { data: monthRows }, { data: balances }, { data: counterDay }, { data: counterSales }] = await Promise.all([
-    supabase.rpc("get_totals", { p_from: from14 < lastWeek ? from14 : lastWeek, p_to: today, p_group: "day" }),
-    supabase.rpc("get_totals", { p_from: firstWeek, p_to: addDays(thisWeek, 6), p_group: "week" }),
-    supabase.rpc("get_totals", { p_from: month, p_to: today, p_group: "month" }),
-    supabase.from("customer_overview").select("id, name, balance, last_entry_date").eq("is_active", true).neq("balance", 0),
-    supabase.from("counter_days").select("sales_income").eq("entry_date", today).maybeSingle(),
-    supabase.from("counter_sales").select("amount").eq("entry_date", today),
+  const [daily, weeks, monthRows, balances, counter] = await Promise.all([
+    getTotals(from14 < lastWeek ? from14 : lastWeek, today, "day"),
+    getTotals(firstWeek, addDays(thisWeek, 6), "week"),
+    getTotals(month, today, "month"),
+    getCustomers("IsActive = 1 AND Balance <> 0"),
+    query<Row>(
+      `SELECT Bread = ISNULL((SELECT SalesIncome FROM dbo.CounterDays WHERE EntryDate = @D), 0),
+              Items = ISNULL((SELECT SUM(Amount) FROM dbo.CounterSales WHERE EntryDate = @D), 0)`,
+      { D: day(today) },
+    ),
   ]);
+  const counterDay = { sales_income: num(counter[0]?.Bread) };
+  const counterSales = [{ amount: num(counter[0]?.Items) }];
 
-  const dayMap = new Map((daily ?? []).map((r) => [r.period_start, r as Totals]));
+  const dayMap = new Map(daily.map((r) => [r.period_start, r as Totals]));
   const t = dayMap.get(today);
   const sameDayLastWeek = dayMap.get(addDays(today, -7));
 
@@ -139,10 +146,10 @@ async function Dashboard() {
 
   return (
     <>
-      <header className="animate-rise mb-6 flex flex-col gap-4 sm:mb-8 md:flex-row md:items-end md:justify-between">
+      <header className="mb-6 flex flex-col gap-4 sm:mb-8 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="font-semibold text-brand-deep dark:text-brand">{longDate(today)}</p>
-          <h1 className="font-display text-[2.1rem] leading-[1.05] font-semibold tracking-[-0.025em] sm:text-[2.6rem]">
+          <h1 className="font-display text-display leading-[1.05] font-semibold tracking-[-0.025em] sm:text-headline">
             {weekdayLong(today)}
           </h1>
         </div>
@@ -159,7 +166,6 @@ async function Dashboard() {
       {/* ── Bugün özet: ekmek, ciro, tezgah ───────────────────── */}
       <div className="mb-4 grid grid-cols-1 gap-4 sm:mb-5 sm:grid-cols-3 sm:gap-5">
         <TodayCard
-          i={1}
           icon={Wheat}
           tone="amber"
           label="Bugün satılan ekmek"
@@ -169,7 +175,6 @@ async function Dashboard() {
           href="/siparisler"
         />
         <TodayCard
-          i={2}
           icon={TrendingUp}
           tone="brand"
           label="Bugün toplam ciro"
@@ -178,7 +183,6 @@ async function Dashboard() {
           strong
         />
         <TodayCard
-          i={3}
           icon={Store}
           tone="sky"
           label="Bugün tezgah toplamı"
@@ -191,21 +195,21 @@ async function Dashboard() {
       <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-12">
         {/* ── Bugün ─────────────────────────────────────────────── */}
         <section
-          style={order(0)}
-          className="brand-fill animate-rise relative col-span-2 flex flex-col overflow-hidden rounded-tile p-5 sm:p-7 lg:col-span-7"
+         
+          className="brand-fill relative col-span-2 flex flex-col overflow-hidden rounded-tile p-5 sm:p-7 lg:col-span-7"
         >
           <div className="pointer-events-none absolute -top-24 -right-20 size-72 rounded-full bg-white/[0.07]" aria-hidden />
           <div className="pointer-events-none absolute -bottom-32 -left-16 size-72 rounded-full bg-black/[0.06]" aria-hidden />
 
           <div className="relative flex items-center justify-between gap-3">
-            <h2 className="font-display text-[1.15rem] font-semibold">Bugünün satışı</h2>
-            <span className="rounded-full bg-white/20 px-3 py-1 text-[0.78rem] font-semibold">
+            <h2 className="font-display text-lead font-semibold">Bugünün satışı</h2>
+            <span className="rounded-full bg-white/20 px-3 py-1 text-label font-semibold">
               {t ? `${t.customer_count} müşteri` : "Henüz kayıt yok"}
             </span>
           </div>
 
           <div className="relative mt-4 flex flex-wrap items-end gap-x-4 gap-y-2">
-            <p className="font-display tnum text-[2.8rem] leading-none font-semibold tracking-[-0.03em] sm:text-[3.6rem]">
+            <p className="font-display tnum text-hero leading-none font-semibold tracking-[-0.03em] sm:text-mega">
               <AnimatedNumber value={Number(t?.net_amount ?? 0)} />
             </p>
             <div className="pb-1.5">
@@ -218,7 +222,7 @@ async function Dashboard() {
           </div>
 
           <div className="relative mt-5">
-            <div className="mb-1.5 flex items-center justify-between text-[0.75rem] font-semibold text-white/75">
+            <div className="mb-1.5 flex items-center justify-between text-caption font-semibold text-white/75">
               <span>Son 14 gün</span>
               <span className="tnum">{shortDate(from14)} – {shortDate(today)}</span>
             </div>
@@ -232,10 +236,10 @@ async function Dashboard() {
               { label: "Alınan para", node: <AnimatedNumber value={Number(t?.collection ?? 0)} />, unit: "" },
             ].map((s) => (
               <div key={s.label} className="min-w-0">
-                <p className="text-[0.75rem] font-semibold text-white/75">{s.label}</p>
-                <p className="font-display truncate text-[1.2rem] font-semibold sm:text-[1.4rem]">
+                <p className="text-caption font-semibold text-white/75">{s.label}</p>
+                <p className="font-display truncate text-lead font-semibold sm:text-title">
                   {s.node}
-                  {s.unit && <span className="ml-1 font-sans text-[0.75rem] font-semibold text-white/70">{s.unit}</span>}
+                  {s.unit && <span className="ml-1 font-sans text-caption font-semibold text-white/70">{s.unit}</span>}
                 </p>
               </div>
             ))}
@@ -243,7 +247,7 @@ async function Dashboard() {
 
           <Link
             href="/siparisler"
-            className="group relative mt-5 inline-flex min-h-12 w-fit items-center gap-2 rounded-xl bg-white px-4 font-semibold text-[#0a5a32] shadow-[0_8px_20px_-8px_rgba(0,0,0,0.35)] transition-transform duration-200 active:scale-[0.97]"
+            className="group relative mt-5 inline-flex min-h-12 w-fit items-center gap-2 rounded-xl bg-white px-4 font-semibold text-brand-strong transition-transform duration-200 active:scale-[0.96]"
           >
             Bugünün siparişlerini gir
             <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
@@ -252,49 +256,49 @@ async function Dashboard() {
 
         {/* ── Göstergeler ───────────────────────────────────────── */}
         <div className="col-span-2 grid grid-cols-2 gap-4 sm:gap-5 lg:col-span-5">
-          <Kpi i={1} icon={TrendingUp} tone="brand" label="Bu hafta satış">
-            <p className="font-display tnum truncate text-[1.5rem] font-semibold tracking-[-0.02em] sm:text-[1.65rem]">
+          <Kpi icon={TrendingUp} tone="brand" label="Bu hafta satış">
+            <p className="font-display tnum truncate text-title font-semibold tracking-[-0.02em] sm:text-heading">
               <AnimatedNumber value={wk.net} />
             </p>
             <Delta value={pctChange(wk.net, prevWk.net)} suffix="geçen haftaya göre" />
           </Kpi>
 
-          <Kpi i={2} icon={HandCoins} tone="sky" label="Bu hafta alınan">
-            <p className="font-display tnum truncate text-[1.5rem] font-semibold tracking-[-0.02em] sm:text-[1.65rem]">
+          <Kpi icon={HandCoins} tone="sky" label="Bu hafta alınan">
+            <p className="font-display tnum truncate text-title font-semibold tracking-[-0.02em] sm:text-heading">
               <AnimatedNumber value={wk.collect} />
             </p>
             <Delta value={pctChange(wk.collect, prevWk.collect)} suffix="geçen haftaya göre" />
           </Kpi>
 
-          <Tile i={3} className="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
+          <Tile className="flex flex-col items-center gap-3 text-center sm:flex-row sm:text-left">
             <Gauge ratio={collectRate} label="tahsil" tone="sky" />
             <div className="min-w-0">
-              <p className="text-[0.85rem] font-semibold text-ink">Tahsilat oranı</p>
-              <p className="mt-0.5 text-[0.78rem] text-ink-3">Bu haftaki satışın ne kadarının parası alındı</p>
+              <p className="text-small font-semibold text-ink">Tahsilat oranı</p>
+              <p className="mt-0.5 text-label text-ink-3">Bu haftaki satışın ne kadarının parası alındı</p>
             </div>
           </Tile>
 
-          <Kpi i={4} icon={ArrowDownLeft} tone="amber" label="Bu ay iade">
-            <p className="font-display tnum text-[1.5rem] font-semibold tracking-[-0.02em] sm:text-[1.65rem]">
+          <Kpi icon={ArrowDownLeft} tone="amber" label="Bu ay iade">
+            <p className="font-display tnum text-title font-semibold tracking-[-0.02em] sm:text-heading">
               {returnRate == null ? "—" : `%${(returnRate * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}`}
             </p>
             <div className="h-2 w-full overflow-hidden rounded-full bg-bg-deep" aria-hidden>
               <div className="h-full rounded-full bg-amber" style={{ width: `${Math.min(100, (returnRate ?? 0) * 100)}%` }} />
             </div>
-            <p className="text-[0.76rem] text-ink-3">
+            <p className="text-caption text-ink-3">
               {qty(m?.returned_qty)} / {qty(m?.delivered_qty)} ekmek geri döndü
             </p>
           </Kpi>
         </div>
 
         {/* ── Son 8 hafta ───────────────────────────────────────── */}
-        <Tile i={5} className="col-span-2 lg:col-span-7">
+        <Tile className="col-span-2 lg:col-span-7">
           <TileTitle
             icon={<IconChip icon={ChartColumn} tone="brand" size="sm" />}
             aside={
               <Link
                 href="/rapor"
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[0.85rem] font-semibold text-brand-deep hover:bg-brand-soft dark:text-brand"
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-small font-semibold text-brand-deep hover:bg-brand-soft dark:text-brand"
               >
                 Hafta raporu <ArrowUpRight size={15} />
               </Link>
@@ -311,13 +315,13 @@ async function Dashboard() {
         </Tile>
 
         {/* ── Açık hesaplar ─────────────────────────────────────── */}
-        <Tile i={6} className="col-span-2 flex flex-col lg:col-span-5">
+        <Tile className="col-span-2 flex flex-col lg:col-span-5">
           <TileTitle
             icon={<IconChip icon={Wallet} tone="debt" size="sm" />}
             aside={
               <Link
                 href="/musteriler"
-                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[0.85rem] font-semibold text-brand-deep hover:bg-brand-soft dark:text-brand"
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-small font-semibold text-brand-deep hover:bg-brand-soft dark:text-brand"
               >
                 Tümü <ArrowUpRight size={15} />
               </Link>
@@ -328,14 +332,14 @@ async function Dashboard() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-debt-soft p-4 ring-1 ring-debt/15">
-              <p className="text-[0.8rem] font-semibold text-debt">Bize borçları</p>
-              <p className="font-display tnum mt-0.5 truncate text-[1.5rem] font-semibold text-debt">
+              <p className="text-label font-semibold text-debt">Bize borçları</p>
+              <p className="font-display tnum mt-0.5 truncate text-title font-semibold text-debt">
                 <AnimatedNumber value={receivable} />
               </p>
             </div>
             <div className="rounded-2xl bg-credit-soft p-4 ring-1 ring-credit/15">
-              <p className="text-[0.8rem] font-semibold text-credit">Fazla ödenen</p>
-              <p className="font-display tnum mt-0.5 truncate text-[1.5rem] font-semibold text-credit">
+              <p className="text-label font-semibold text-credit">Fazla ödenen</p>
+              <p className="font-display tnum mt-0.5 truncate text-title font-semibold text-credit">
                 <AnimatedNumber value={credit} />
               </p>
             </div>
@@ -343,12 +347,12 @@ async function Dashboard() {
 
           {receivable + credit > 0 && (
             <div className="mt-3 flex h-2 gap-[3px] overflow-hidden rounded-full" aria-hidden>
-              <div className="rounded-full bg-debt transition-[width] duration-700" style={{ width: `${debtShare}%` }} />
+              <div className="rounded-full bg-debt" style={{ width: `${debtShare}%` }} />
               <div className="flex-1 rounded-full bg-credit" />
             </div>
           )}
 
-          <p className="mt-5 mb-1 text-[0.78rem] font-semibold text-ink-3">En çok borcu olanlar</p>
+          <p className="mt-5 mb-1 text-label font-semibold text-ink-3">En çok borcu olanlar</p>
           {debtors.length > 0 ? (
             <ol className="flex flex-col">
               {debtors.map((c, i) => (
@@ -361,7 +365,7 @@ async function Dashboard() {
                       <span className="flex min-w-0 items-center gap-3">
                         <span
                           className={cx(
-                            "grid size-7 shrink-0 place-items-center rounded-full text-[0.75rem] font-bold",
+                            "grid size-7 shrink-0 place-items-center rounded-full text-caption font-bold",
                             i === 0 ? "bg-debt text-white" : "bg-bg-deep text-ink-2",
                           )}
                         >
@@ -370,7 +374,7 @@ async function Dashboard() {
                         <span className="min-w-0">
                           <span className="block truncate font-semibold">{c.name}</span>
                           {c.last_entry_date && (
-                            <span className="block text-[0.75rem] text-ink-3">
+                            <span className="block text-caption text-ink-3">
                               Son kayıt {weekdayShort(c.last_entry_date)} {shortDate(c.last_entry_date)}
                             </span>
                           )}
@@ -389,7 +393,7 @@ async function Dashboard() {
               ))}
             </ol>
           ) : (
-            <p className="rounded-2xl bg-credit-soft px-4 py-3 text-[0.9rem] font-semibold text-credit">
+            <p className="rounded-2xl bg-credit-soft px-4 py-3 text-small font-semibold text-credit">
               Borçlu müşteri yok. Bütün hesaplar kapalı ya da fazla ödenmiş.
             </p>
           )}
@@ -400,23 +404,21 @@ async function Dashboard() {
 }
 
 function Kpi({
-  i,
   icon,
   tone,
   label,
   children,
 }: {
-  i: number;
   icon: React.ComponentProps<typeof IconChip>["icon"];
   tone: React.ComponentProps<typeof IconChip>["tone"];
   label: string;
   children: React.ReactNode;
 }) {
   return (
-    <Tile i={i} className="flex min-w-0 flex-col gap-2.5">
+    <Tile className="flex min-w-0 flex-col gap-2.5">
       <div className="flex items-center gap-2.5">
         <IconChip icon={icon} tone={tone} size="sm" />
-        <p className="truncate text-[0.82rem] font-semibold text-ink-2">{label}</p>
+        <p className="truncate text-label font-semibold text-ink-2">{label}</p>
       </div>
       {children}
     </Tile>
@@ -426,8 +428,8 @@ function Kpi({
 function Summary({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <dt className="truncate text-[0.72rem] font-semibold text-ink-3">{label}</dt>
-      <dd className="font-display tnum truncate text-[1rem] font-semibold sm:text-[1.15rem]">{value}</dd>
+      <dt className="truncate text-caption font-semibold text-ink-3">{label}</dt>
+      <dd className="font-display tnum truncate text-input font-semibold sm:text-lead">{value}</dd>
     </div>
   );
 }
@@ -462,7 +464,6 @@ export default function HomePage() {
 }
 
 function TodayCard({
-  i,
   icon,
   tone,
   label,
@@ -472,7 +473,6 @@ function TodayCard({
   href,
   strong,
 }: {
-  i: number;
   icon: LucideIcon;
   tone: "brand" | "amber" | "sky";
   label: string;
@@ -484,23 +484,23 @@ function TodayCard({
 }) {
   const body = (
     <>
-      <span className="flex items-center gap-2.5 text-[0.88rem] font-semibold text-ink-2">
+      <span className="flex items-center gap-2.5 text-small font-semibold text-ink-2">
         <IconChip icon={icon} tone={tone} size="sm" /> {label}
       </span>
-      <span className={cx("mt-3 block font-display tnum leading-none font-semibold tracking-[-0.02em]", strong ? "text-[2.3rem] text-brand-deep dark:text-brand sm:text-[2.5rem]" : "text-[2.1rem] sm:text-[2.3rem]")}>
+      <span className={cx("mt-3 block font-display tnum leading-none font-semibold tracking-[-0.02em]", strong ? "text-display text-brand-deep dark:text-brand sm:text-headline" : "text-display")}>
         {value}
-        {unit && <span className="ml-1.5 font-sans text-[0.9rem] font-semibold text-ink-3">{unit}</span>}
+        {unit && <span className="ml-1.5 font-sans text-small font-semibold text-ink-3">{unit}</span>}
       </span>
-      <span className="tnum mt-2 block truncate text-[0.8rem] text-ink-3">{hint}</span>
+      <span className="tnum mt-2 block truncate text-label text-ink-3">{hint}</span>
     </>
   );
-  const cls = cx("neu animate-rise block rounded-tile p-5", strong && "ring-2 ring-brand/35", href && "lift");
+  const cls = cx("neu block rounded-tile p-5", strong && "ring-2 ring-brand/35", href && "lift");
   return href ? (
-    <Link href={href} style={order(i)} className={cls}>
+    <Link href={href} className={cls}>
       {body}
     </Link>
   ) : (
-    <div style={order(i)} className={cls}>
+    <div className={cls}>
       {body}
     </div>
   );

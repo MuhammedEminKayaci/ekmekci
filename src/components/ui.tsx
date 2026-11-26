@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ComponentProps, CSSProperties, ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { CalendarCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { balanceTone, money, weekRangeLabel } from "@/lib/format";
@@ -8,23 +8,12 @@ export function cx(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
 
-/** Sıralı giriş animasyonu için gecikme sırası. */
-export function order(i: number): CSSProperties {
-  return { ["--i" as string]: i };
-}
-
 // --- Yüzeyler ----------------------------------------------------------------
 
-export function Tile({
-  className,
-  children,
-  i,
-  ...rest
-}: ComponentProps<"section"> & { children: ReactNode; i?: number }) {
+export function Tile({ className, children, ...rest }: ComponentProps<"section"> & { children: ReactNode }) {
   return (
     <section
-      className={cx("neu animate-rise rounded-tile p-5 sm:p-6", className)}
-      style={i != null ? order(i) : undefined}
+      className={cx("neu rounded-tile p-5 sm:p-6", className)}
       {...rest}
     >
       {children}
@@ -35,7 +24,7 @@ export function Tile({
 export function TileTitle({ children, aside, icon }: { children: ReactNode; aside?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
-      <h2 className="flex items-center gap-2.5 font-display text-[1.08rem] font-semibold tracking-tight text-ink">
+      <h2 className="flex items-center gap-2.5 font-display text-lead font-semibold tracking-tight text-ink">
         {icon}
         {children}
       </h2>
@@ -54,12 +43,12 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="animate-rise mb-6 flex flex-col gap-4 sm:mb-8 xl:flex-row xl:items-end xl:justify-between">
+    <header className="mb-6 flex flex-col gap-4 sm:mb-8 xl:flex-row xl:items-end xl:justify-between">
       <div className="min-w-0">
-        <h1 className="font-display text-[2rem] leading-[1.05] font-semibold tracking-[-0.025em] text-ink sm:text-[2.5rem]">
+        <h1 className="font-display text-display leading-[1.05] font-semibold tracking-[-0.025em] text-ink sm:text-headline">
           {title}
         </h1>
-        {description && <p className="mt-2 max-w-[62ch] text-[0.95rem] text-ink-2">{description}</p>}
+        {description && <p className="mt-2 max-w-[62ch] text-body text-ink-2">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-3">{actions}</div>}
     </header>
@@ -114,16 +103,16 @@ export function Stat({
     <div className="flex min-w-0 items-start gap-3">
       {icon && <IconChip icon={icon} tone={tone} size={size === "lg" ? "md" : "sm"} />}
       <div className="min-w-0">
-        <p className="text-[0.82rem] font-semibold text-ink-2">{label}</p>
+        <p className="text-label font-semibold text-ink-2">{label}</p>
         <p
           className={cx(
             "font-display tnum mt-0.5 truncate font-semibold tracking-[-0.02em] text-ink",
-            size === "lg" ? "text-[2.2rem] leading-none sm:text-[2.7rem]" : "text-[1.4rem] leading-tight",
+            size === "lg" ? "text-display leading-none sm:text-hero" : "text-title leading-tight",
           )}
         >
           {value}
         </p>
-        {hint && <p className="mt-1 text-[0.8rem] text-ink-3">{hint}</p>}
+        {hint && <p className="mt-1 text-label text-ink-3">{hint}</p>}
       </div>
     </div>
   );
@@ -160,7 +149,7 @@ export function BalanceBadge({ value, kind = "balance" }: { value: number; kind?
   return (
     <span
       className={cx(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[0.74rem] font-semibold whitespace-nowrap",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-caption font-semibold whitespace-nowrap",
         tone === "debt" && "bg-debt-soft text-debt",
         tone === "credit" && "bg-credit-soft text-credit",
         tone === "zero" && "bg-bg-deep text-ink-2",
@@ -181,7 +170,7 @@ export function TypeChip({ type }: { type: number }) {
   return (
     <span
       className={cx(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[0.72rem] font-semibold",
+        "inline-flex items-center rounded-full px-2 py-0.5 text-caption font-semibold",
         type === 2 ? "bg-sky-soft text-sky" : "bg-brand-soft text-brand-deep dark:text-brand",
       )}
     >
@@ -196,8 +185,8 @@ type ButtonVariant = "primary" | "soft" | "ghost" | "danger";
 
 export function buttonClass(variant: ButtonVariant = "soft", className?: string) {
   return cx(
-    "inline-flex min-h-12 items-center justify-center gap-2 rounded-control px-5 text-[0.93rem] font-semibold select-none",
-    "transition-[transform,box-shadow,background-color,color,opacity] duration-200 ease-out active:scale-[0.97]",
+    "inline-flex min-h-12 items-center justify-center gap-2 rounded-control px-5 text-body font-semibold select-none",
+    "transition-[transform,box-shadow,background-color,color,opacity] duration-200 ease-out active:scale-[0.96]",
     "disabled:pointer-events-none disabled:opacity-50",
     variant === "primary" && "brand-fill hover:brightness-[1.06]",
     variant === "soft" && "neu-sm text-ink hover:text-brand-deep dark:hover:text-brand",
@@ -224,7 +213,7 @@ export function ButtonLink({
 }
 
 export const inputClass =
-  "neu-inset tnum w-full min-h-12 rounded-control px-4 text-[1rem] text-ink placeholder:text-ink-3 outline-none transition-shadow duration-200 focus:shadow-[inset_0_0_0_2px_var(--brand),inset_3px_3px_7px_var(--sh-dark)] disabled:opacity-60";
+  "neu-inset tnum w-full min-h-12 rounded-control px-4 text-input text-ink placeholder:text-ink-3 outline-none transition-shadow duration-200 focus:shadow-[inset_0_0_0_2px_var(--brand),inset_3px_3px_7px_var(--sh-dark)] disabled:opacity-60";
 
 export function Field({
   label,
@@ -239,9 +228,9 @@ export function Field({
 }) {
   return (
     <label className={cx("flex flex-col gap-1.5", className)}>
-      <span className="text-[0.85rem] font-semibold text-ink-2">{label}</span>
+      <span className="text-small font-semibold text-ink-2">{label}</span>
       {children}
-      {hint && <span className="text-[0.8rem] text-ink-3">{hint}</span>}
+      {hint && <span className="text-label text-ink-3">{hint}</span>}
     </label>
   );
 }
@@ -262,7 +251,7 @@ export function Segmented({
           scroll={false}
           aria-current={it.value === active ? "page" : undefined}
           className={cx(
-            "rounded-full px-4 py-2 text-[0.85rem] font-semibold transition-all duration-300",
+            "rounded-full px-4 py-2 text-small font-semibold transition-all duration-300",
             it.value === active ? "brand-fill" : "text-ink-2 hover:text-ink",
           )}
         >
@@ -290,8 +279,8 @@ export function WeekNav({
         <ChevronLeft size={22} strokeWidth={2.4} className="shrink-0" />
       </Link>
       <div className="neu-inset flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center rounded-control px-4 text-center sm:min-w-60 sm:flex-none">
-        <span className="text-[0.92rem] font-semibold whitespace-nowrap text-ink">{weekRangeLabel(start)}</span>
-        <span className="text-[0.72rem] font-semibold text-ink-3">{isCurrent ? "Bu hafta" : "Geçmiş / ileri hafta"}</span>
+        <span className="text-body font-semibold whitespace-nowrap text-ink">{weekRangeLabel(start)}</span>
+        <span className="text-caption font-semibold text-ink-3">{isCurrent ? "Bu hafta" : "Geçmiş / ileri hafta"}</span>
       </div>
       <Link href={hrefFor(1)} className={buttonClass("soft", "w-12 px-0")} aria-label="Sonraki hafta" scroll={false}>
         <ChevronRight size={22} strokeWidth={2.4} className="shrink-0" />
@@ -307,9 +296,9 @@ export function WeekNav({
 
 export function Empty({ title, children, icon }: { title: string; children?: ReactNode; icon?: ReactNode }) {
   return (
-    <div className="animate-fade flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
       {icon}
-      <p className="font-display text-[1.15rem] font-semibold text-ink">{title}</p>
+      <p className="font-display text-lead font-semibold text-ink">{title}</p>
       {children && <div className="max-w-[46ch] text-ink-2">{children}</div>}
     </div>
   );

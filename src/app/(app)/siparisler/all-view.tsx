@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Truck } from "lucide-react";
-import { Balance, BalanceBadge, Empty, cx, order } from "@/components/ui";
+import { Balance, BalanceBadge, Empty, cx } from "@/components/ui";
 import { money, qty } from "@/lib/format";
 
 type Row = {
@@ -76,40 +76,40 @@ export function AllView({
     <div className="flex flex-col gap-5 pb-4">
       {/* Dağıtıcı özetleri */}
       <div className="grid gap-3 px-3 sm:grid-cols-2 sm:px-4 xl:grid-cols-3 xl:px-6">
-        {summaries.map((s, i) => (
+        {summaries.map((s) => (
           <button
             key={s.driver.id}
             type="button"
             onClick={() => onPickDriver(s.driver.id)}
-            style={order(i)}
-            className="neu-sm lift animate-rise flex flex-col gap-2 rounded-2xl p-4 text-left"
+           
+            className="neu-sm lift flex flex-col gap-2 rounded-2xl p-4 text-left"
           >
             <span className="flex items-center gap-2 font-semibold">
               <Truck size={16} className="text-sky" /> {s.driver.name}
-              <span className="ml-auto text-[0.78rem] font-medium text-ink-3">{s.customers} müşteri</span>
+              <span className="ml-auto text-label font-medium text-ink-3">{s.customers} müşteri</span>
             </span>
-            <span className="tnum grid grid-cols-3 gap-2 text-[0.85rem]">
+            <span className="tnum grid grid-cols-3 gap-2 text-small">
               <span>
-                <span className="block text-[0.72rem] font-semibold text-ink-3">Ekmek</span>
+                <span className="block text-caption font-semibold text-ink-3">Ekmek</span>
                 {qty(s.delivered)}
               </span>
               <span>
-                <span className="block text-[0.72rem] font-semibold text-ink-3">Toplanan</span>
+                <span className="block text-caption font-semibold text-ink-3">Toplanan</span>
                 {money(s.collected)}
               </span>
               <span>
-                <span className="block text-[0.72rem] font-semibold text-ink-3">Teslim edilecek</span>
+                <span className="block text-caption font-semibold text-ink-3">Teslim edilecek</span>
                 <b className="text-brand-deep dark:text-brand">{money(s.toHand)}</b>
               </span>
             </span>
-            {s.spent > 0 && <span className="tnum text-[0.78rem] text-debt">Gider − {money(s.spent)}</span>}
+            {s.spent > 0 && <span className="tnum text-label text-debt">Gider − {money(s.spent)}</span>}
           </button>
         ))}
       </div>
 
       {/* Müşteri toplamları */}
       <div>
-        <div className={cx("hidden border-y border-line px-6 py-3 text-[0.8rem] font-semibold text-ink-3", GRID)}>
+        <div className={cx("hidden border-y border-line px-6 py-3 text-label font-semibold text-ink-3", GRID)}>
           <span>Müşteri</span>
           <span>Kim götürdü</span>
           <span className="text-right">Verilen</span>
@@ -119,12 +119,11 @@ export function AllView({
           <span className="text-right">Toplam hesap</span>
         </div>
         <ul className="flex flex-col gap-2.5 px-3 sm:px-4 lg:gap-0 lg:px-0">
-          {[...byCustomer.entries()].map(([id, c], i) => (
+          {[...byCustomer.entries()].map(([id, c]) => (
             <li
               key={id}
-              style={order(Math.min(i, 12))}
               className={cx(
-                "neu-sm animate-rise rounded-2xl p-4 lg:rounded-none lg:border-b lg:border-line lg:bg-transparent lg:px-6 lg:py-3 lg:shadow-none",
+                "neu-sm rounded-2xl p-4 lg:rounded-none lg:border-b lg:border-line lg:bg-transparent lg:px-6 lg:py-3 lg:shadow-none",
                 GRID,
               )}
             >
@@ -139,12 +138,12 @@ export function AllView({
               </div>
               <p className="mt-1 flex flex-wrap gap-1.5 lg:mt-0">
                 {c.parts.map((p) => (
-                  <span key={p.driver} className="rounded-full bg-sky-soft px-2 py-0.5 text-[0.75rem] font-semibold text-sky">
+                  <span key={p.driver} className="rounded-full bg-sky-soft px-2 py-0.5 text-caption font-semibold text-sky">
                     {driverName.get(p.driver) ?? "?"} {qty(p.qty)}
                   </span>
                 ))}
               </p>
-              <dl className="tnum mt-3 grid grid-cols-4 gap-2 text-[0.88rem] lg:contents">
+              <dl className="tnum mt-3 grid grid-cols-4 gap-2 text-small lg:contents">
                 <Cell label="Verilen" value={qty(c.delivered)} />
                 <Cell label="İade" value={qty(c.returned)} />
                 <Cell label="Alınan" value={money(c.collection)} />
@@ -165,7 +164,7 @@ export function AllView({
 function Cell({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 lg:text-right">
-      <dt className="text-[0.7rem] font-semibold text-ink-3 lg:sr-only">{label}</dt>
+      <dt className="text-caption font-semibold text-ink-3 lg:sr-only">{label}</dt>
       <dd className="truncate font-semibold">{value}</dd>
     </div>
   );

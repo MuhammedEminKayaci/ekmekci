@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui";
-import { createClient } from "@/lib/supabase/server";
+import { getCatalog, getCustomers } from "@/lib/reports";
+import { requireUser } from "@/lib/session";
 import type { CatalogProduct } from "./customer-form";
 import { CustomerList, type CustomerItem } from "./customer-list";
 
@@ -11,21 +12,13 @@ type Search = Promise<{ yeni?: string }>;
 
 async function Customers({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("customer_overview")
-    .select("id, name, type, address, is_active, buys_products, products, balance, last_entry_date")
-    .order("name");
-  const { data: catalog } = await supabase
-    .from("products")
-    .select("id, name, unit, suggested_price")
-    .eq("is_active", true)
-    .order("sort_order");
+  await requireUser();
+  const [customers, catalog] = await Promise.all([getCustomers(), getCatalog()]);
 
   return (
     <CustomerList
-      customers={(data ?? []) as unknown as CustomerItem[]}
-      catalog={(catalog ?? []) as CatalogProduct[]}
+      customers={customers as CustomerItem[]}
+      catalog={catalog as CatalogProduct[]}
       openNew={sp.yeni === "1"}
     />
   );

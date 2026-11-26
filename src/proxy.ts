@@ -1,31 +1,12 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { SESSION_COOKIE, verifyToken } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/giris"];
+const PUBLIC_PATHS = ["/giris", "/cikis", "/api/saglik"];
 
-// Oturumu yeniler; giriş yapmamış kullanıcıyı giriş sayfasına yönlendirir.
-export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-        },
-      },
-    },
-  );
-
-  const { data } = await supabase.auth.getClaims();
-  const signedIn = Boolean(data?.claims);
+// Giriş yapmamış kullanıcıyı giriş sayfasına yönlendirir. Yalnızca çerezin imzasına bakar;
+// hesabın aktif olup olmadığını sayfalar ve procedure'lar veritabanından denetler.
+export function proxy(request: NextRequest) {
+  const signedIn = verifyToken(request.cookies.get(SESSION_COOKIE)?.value) != null;
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
@@ -36,14 +17,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (signedIn && isPublic) {
+  if (signedIn && pathname === "/giris") {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";
     return NextResponse.redirect(url);
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {

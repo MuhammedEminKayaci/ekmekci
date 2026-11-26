@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Ekmekçi paneli: IIS + iisnode. hazirla.cjs bu şablondan web.config üretir ({{...}} alanları .env.local'dan). -->
+<configuration>
+  <appSettings>
+    <!-- iisnode bunları uygulamaya ortam değişkeni olarak verir. IIS web.config'i dışarıya sunmaz. -->
+    <add key="NODE_ENV" value="production" />
+    <add key="MSSQL_SERVER" value="{{MSSQL_SERVER}}" />
+    <add key="MSSQL_PORT" value="{{MSSQL_PORT}}" />
+    <add key="MSSQL_DATABASE" value="{{MSSQL_DATABASE}}" />
+    <add key="MSSQL_USER" value="{{MSSQL_USER}}" />
+    <add key="MSSQL_PASSWORD" value="{{MSSQL_PASSWORD}}" />
+    <add key="SESSION_SECRET" value="{{SESSION_SECRET}}" />
+    <!-- Uygulama 4 dakikada bir kendini çağırır: IIS boşta kapatmaz, sabah ilk açılış hızlı olur. -->
+    <add key="KEEPALIVE_URL" value="https://panel.bizimfirin.com/api/saglik" />
+  </appSettings>
+  <system.webServer>
+    <handlers>
+      <add name="iisnode" path="iisnode.js" verb="*" modules="iisnode" />
+    </handlers>
+    <rewrite>
+      <rules>
+        <!-- Her istek uygulamaya: sayfalar, statik dosyalar (/_next/static) ve işlemler. -->
+        <rule name="ekmekci" stopProcessing="true">
+          <match url=".*" />
+          <action type="Rewrite" url="iisnode.js" />
+        </rule>
+      </rules>
+    </rewrite>
+    <iisnode
+      nodeProcessCountPerApplication="1"
+      flushResponse="true"
+      enableXFF="true"
+      loggingEnabled="true"
+      logDirectory="iisnode"
+      devErrorsEnabled="false"
+      debuggingEnabled="false"
+      watchedFiles="web.config;iisnode.js" />
+    <!-- IIS uygulamayı yeniden başlatınca (geri dönüşüm) ilk kullanıcıyı beklemeden ısıtsın. -->
+    <applicationInitialization doAppInitAfterRestart="true">
+      <add initializationPage="/api/saglik" />
+    </applicationInitialization>
+    <!-- Uygulamanın kendi 404/500 yanıtları Plesk hata sayfalarıyla değiştirilmesin. -->
+    <httpErrors existingResponse="PassThrough" />
+    <security>
+      <requestFiltering>
+        <!-- node_modules sunucuda iisnode kurulumuyla zaten gizli; tekrar eklemek 500 hatası verir. -->
+        <hiddenSegments>
+          <add segment="iisnode" />
+          <add segment=".next" />
+        </hiddenSegments>
+      </requestFiltering>
+    </security>
+    <httpProtocol>
+      <customHeaders>
+        <remove name="X-Powered-By" />
+      </customHeaders>
+    </httpProtocol>
+  </system.webServer>
+  <!-- Anlık güncelleme akışı (Server-Sent Events): IIS sıkıştırması olayları tamponda bekletmesin. -->
+  <location path="api/canli">
+    <system.webServer>
+      <urlCompression doStaticCompression="false" doDynamicCompression="false" />
+    </system.webServer>
+  </location>
+</configuration>

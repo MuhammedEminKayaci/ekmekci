@@ -96,7 +96,7 @@ function ProductForm({ product, categories, onDone }: { product?: Product; categ
         <input name="name" required maxLength={60} defaultValue={product?.name} placeholder="Örn. Zeytinyağı lüks" autoComplete="off" className={inputClass} />
       </Field>
       <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1.5 text-[0.85rem] font-semibold text-ink-2">Tür</legend>
+        <legend className="mb-1.5 text-small font-semibold text-ink-2">Tür</legend>
         <div className="flex flex-wrap gap-1.5">
           {categories.map((c) => (
             <button
@@ -105,7 +105,7 @@ function ProductForm({ product, categories, onDone }: { product?: Product; categ
               aria-pressed={categoryId === c.id}
               onClick={() => setCategoryId(c.id)}
               className={cx(
-                "min-h-10 rounded-full px-4 text-[0.88rem] font-semibold transition-all duration-200",
+                "min-h-10 rounded-full px-4 text-small font-semibold transition-all duration-200",
                 categoryId === c.id ? "brand-fill" : "bg-bg-deep text-ink-2 hover:text-ink",
               )}
             >
@@ -116,7 +116,7 @@ function ProductForm({ product, categories, onDone }: { product?: Product; categ
             </button>
           ))}
         </div>
-        <span className="text-[0.78rem] text-ink-3">
+        <span className="text-label text-ink-3">
           {selected?.is_bread
             ? "Ekmek türü: tezgahta ek ürün olarak listelenmez (tezgahta ekmek tek tutar girilir)."
             : "Tezgahta ek ürün olarak da satılabilir."}
@@ -138,11 +138,11 @@ function ProductForm({ product, categories, onDone }: { product?: Product; categ
         </Field>
       </div>
       {error && (
-        <p role="alert" className="rounded-control bg-debt-soft px-3.5 py-2.5 text-[0.88rem] font-medium text-debt">
+        <p role="alert" className="rounded-control bg-debt-soft px-3.5 py-2.5 text-small font-medium text-debt">
           {error}
         </p>
       )}
-      <button type="submit" disabled={pending} className={buttonClass("primary", "min-h-14 w-full text-[1rem]")}>
+      <button type="submit" disabled={pending} className={buttonClass("primary", "min-h-14 w-full text-input")}>
         {pending ? "Kaydediliyor…" : product ? "Kaydet" : "Ürünü ekle"}
       </button>
       {product && (
@@ -182,7 +182,7 @@ function BreadToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
       type="button"
       aria-pressed={value}
       onClick={() => onChange(!value)}
-      className="flex items-center gap-2 text-left text-[0.84rem] font-semibold text-ink-2"
+      className="flex items-center gap-2 text-left text-small font-semibold text-ink-2"
     >
       <span className={cx("grid size-6 shrink-0 place-items-center rounded-lg", value ? "brand-fill" : "neu-inset")}>
         {value && <Check size={14} strokeWidth={3} />}
@@ -195,7 +195,7 @@ function BreadToggle({ value, onChange }: { value: boolean; onChange: (v: boolea
 function ColorPicker({ value, onChange }: { value: string; onChange: (v: CategoryColor) => void }) {
   return (
     <div>
-      <p className="mb-1.5 text-[0.8rem] font-semibold text-ink-2">Renk</p>
+      <p className="mb-1.5 text-label font-semibold text-ink-2">Renk</p>
       <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Tür rengi">
         {COLOR_KEYS.map((k) => (
           <button
@@ -269,7 +269,7 @@ function CategoryRow({ category: c }: { category: Category }) {
       <span className={cx("size-3.5 shrink-0 rounded-full", categoryColor(c.color).dot)} aria-hidden />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{c.name}</span>
-        <span className="text-[0.76rem] text-ink-3">
+        <span className="text-caption text-ink-3">
           {c.count} ürün{c.is_bread ? " · ekmek türü" : ""}
         </span>
       </span>
@@ -315,7 +315,7 @@ function NewCategory({ used }: { used: string[] }) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3 rounded-2xl border border-dashed border-edge-strong p-3.5">
-      <p className="text-[0.85rem] font-semibold text-ink-2">Yeni tür</p>
+      <p className="text-small font-semibold text-ink-2">Yeni tür</p>
       <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder="Örn. Yufka" aria-label="Yeni tür adı" className={inputClass} />
       <BreadToggle value={bread} onChange={setBread} />
       <ColorPicker value={color} onChange={setColor} />

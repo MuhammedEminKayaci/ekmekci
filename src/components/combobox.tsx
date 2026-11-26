@@ -116,7 +116,7 @@ export function Combobox({
         <ul
           id={listId}
           role="listbox"
-          className="scroll-soft animate-pop absolute top-full right-0 left-0 z-40 mt-1.5 max-h-72 overflow-y-auto rounded-2xl border border-edge bg-surface p-1.5 shadow-[0_18px_40px_-16px_rgba(0,0,0,0.35)]"
+          className="scroll-soft animate-pop absolute top-full right-0 left-0 z-40 mt-1.5 max-h-72 overflow-y-auto rounded-2xl border border-edge bg-surface p-1.5 shadow-pop"
         >
           {results.map((o, i) => (
             <li key={o.key} role="option" aria-selected={i === active}>
@@ -125,7 +125,7 @@ export function Combobox({
                 onMouseEnter={() => setActive(i)}
                 onClick={() => pick(o)}
                 className={cx(
-                  "flex min-h-10 w-full items-center justify-between gap-3 rounded-xl px-3 text-left text-[0.9rem]",
+                  "flex min-h-10 w-full items-center justify-between gap-3 rounded-xl px-3 text-left text-small",
                   i === active ? "bg-brand-soft" : "hover:bg-bg-deep",
                 )}
               >
@@ -133,17 +133,17 @@ export function Combobox({
                   <span className="truncate font-semibold">{o.label}</span>
                   {o.badge}
                 </span>
-                {o.hint && <span className="tnum shrink-0 text-[0.78rem] text-ink-3">{o.hint}</span>}
+                {o.hint && <span className="tnum shrink-0 text-label text-ink-3">{o.hint}</span>}
               </button>
             </li>
           ))}
           {results.length === 0 && (
-            <li className="px-3 py-2.5 text-[0.85rem] text-ink-3">
+            <li className="px-3 py-2.5 text-small text-ink-3">
               {free && value.trim() ? `“${value.trim()}” yeni olarak eklenecek` : emptyText}
             </li>
           )}
           {free && value.trim() && results.length > 0 && !exact && (
-            <li className="border-t border-line px-3 pt-2 pb-1 text-[0.78rem] text-ink-3">
+            <li className="border-t border-line px-3 pt-2 pb-1 text-label text-ink-3">
               Listede yoksa yazdığınız ad (“{value.trim()}”) kullanılır.
             </li>
           )}

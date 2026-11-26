@@ -14,7 +14,7 @@ export function Delta({
   onDark?: boolean;
 }) {
   if (value == null || !Number.isFinite(value)) {
-    return <span className={cx("text-[0.78rem] font-medium", onDark ? "text-white/70" : "text-ink-3")}>Karşılaştırma yok</span>;
+    return <span className={cx("text-label font-medium", onDark ? "text-white/70" : "text-ink-3")}>Karşılaştırma yok</span>;
   }
   const up = value >= 0;
   const good = up === goodWhenUp;
@@ -25,14 +25,14 @@ export function Delta({
     <span className="inline-flex flex-wrap items-center gap-1.5">
       <span
         className={cx(
-          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.75rem] font-bold tnum",
+          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-bold tnum",
           onDark ? "bg-white/20 text-white" : good ? "bg-credit-soft text-credit" : "bg-debt-soft text-debt",
         )}
       >
         <Icon size={13} strokeWidth={2.6} />
         {text}
       </span>
-      {suffix && <span className={cx("text-[0.76rem]", onDark ? "text-white/75" : "text-ink-3")}>{suffix}</span>}
+      {suffix && <span className={cx("text-caption", onDark ? "text-white/75" : "text-ink-3")}>{suffix}</span>}
     </span>
   );
 }
@@ -76,7 +76,7 @@ export function Sparkline({
           <stop offset="100%" stopColor="white" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={area} fill="url(#spark-fill)" className="animate-fade" />
+      <path d={area} fill="url(#spark-fill)" className="" />
       <path
         d={line}
         pathLength={1}
@@ -85,11 +85,11 @@ export function Sparkline({
         strokeWidth={2.5}
         strokeLinecap="round"
         vectorEffect="non-scaling-stroke"
-        className="animate-draw"
+        className=""
       />
     </svg>
       <span
-        className="animate-pop absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_0_4px_rgba(255,255,255,0.25)]"
+        className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white ring-4 ring-white/25"
         style={{ left: `${(last[0] / w) * 100}%`, top: `${(last[1] / h) * 100}%`, animationDelay: "1.2s" }}
       />
     </div>
@@ -115,14 +115,14 @@ export function Gauge({ ratio, label, tone = "brand" }: { ratio: number | null; 
           pathLength={100}
           strokeDasharray="100 100"
           strokeDashoffset={100 - v}
-          className="animate-gauge"
+          className=""
         />
       </svg>
       <div className="text-center">
-        <p className="font-display tnum text-[1.35rem] leading-none font-semibold">
+        <p className="font-display tnum text-title leading-none font-semibold">
           {ratio == null ? "—" : `%${Math.round(v)}`}
         </p>
-        <p className="mt-0.5 text-[0.65rem] font-semibold text-ink-3">{label}</p>
+        <p className="mt-0.5 text-micro font-semibold text-ink-3">{label}</p>
       </div>
     </div>
   );

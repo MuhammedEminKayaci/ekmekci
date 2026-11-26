@@ -3,8 +3,8 @@ import { Suspense } from "react";
 import { DayNav } from "@/components/day-nav";
 import { PageHeader, Segmented, Skeleton } from "@/components/ui";
 import { addDays, isISODate, monthStart, todayTR, weekStart } from "@/lib/format";
-import { getSessionProfile } from "@/lib/session";
-import { createClient } from "@/lib/supabase/server";
+import { day as dbDay, isoDay, num, query, type Row } from "@/lib/db";
+import { requireUser } from "@/lib/session";
 import { ExpensesView, type Expense, type Period } from "./expenses-view";
 
 export const metadata: Metadata = { title: "Giderler" };
@@ -18,29 +18,44 @@ function nextMonth(iso: string) {
 
 async function Expenses({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;
-  const supabase = await createClient();
+  const profile = await requireUser();
   const today = todayTR();
   const day = isISODate(sp.gun) ? sp.gun : today;
   const period: Period = sp.donem === "hafta" || sp.donem === "ay" ? sp.donem : "gun";
   const from = period === "gun" ? day : period === "hafta" ? weekStart(day) : monthStart(day);
   const to = period === "gun" ? day : period === "hafta" ? addDays(weekStart(day), 6) : addDays(nextMonth(monthStart(day)), -1);
 
-  const [{ data: rows }, { data: drivers }, { data: types }, { data: customers }, { data: settings }, profile] = await Promise.all([
-    supabase
-      .from("expenses")
-      .select("id, entry_date, place, driver_id, customer_id, kind, payment, amount, category, description")
-      .gte("entry_date", from)
-      .lte("entry_date", to)
-      .order("entry_date", { ascending: false })
-      .order("created_at", { ascending: false }),
-    supabase.from("drivers").select("id, name, is_active").order("sort_order"),
-    supabase.from("expense_categories").select("id, name").order("sort_order").order("name"),
-    supabase.from("customer_overview").select("id, name, balance, is_active").order("name"),
-    supabase.from("app_settings").select("lock_past_weeks").maybeSingle(),
-    getSessionProfile(),
+  const [expenseRows, driverRows, typeRows, customerRows, lock] = await Promise.all([
+    query<Row>(
+      `SELECT ExpenseId, EntryDate, PlaceCode, DriverId, CustomerId, KindCode, PaymentCode, Amount, CategoryName, Description
+         FROM dbo.vw_ExpenseDetails WHERE EntryDate BETWEEN @From AND @To
+        ORDER BY EntryDate DESC, CreatedAt DESC, ExpenseId DESC`,
+      { From: dbDay(from), To: dbDay(to) },
+    ),
+    query<Row>(`SELECT DriverId, Name, IsActive FROM dbo.Drivers ORDER BY SortOrder, DriverId`),
+    query<Row>(`SELECT ExpenseCategoryId, Name FROM dbo.ExpenseCategories WHERE IsActive = 1 ORDER BY SortOrder, Name`),
+    query<Row>(
+      `SELECT c.CustomerId, c.Name, b.Balance, c.IsActive FROM dbo.Customers c
+         JOIN dbo.vw_CustomerBalances b ON b.CustomerId = c.CustomerId ORDER BY c.Name`,
+    ),
+    query<Row>(`SELECT L = dbo.fn_IsLocked(@D)`, { D: dbDay(day) }),
   ]);
-
-  const locked = (settings?.lock_past_weeks ?? true) && weekStart(day) < weekStart(today);
+  const rows = expenseRows.map((e) => ({
+    id: e.ExpenseId,
+    entry_date: isoDay(e.EntryDate)!,
+    place: e.PlaceCode,
+    driver_id: e.DriverId,
+    customer_id: e.CustomerId,
+    kind: e.KindCode,
+    payment: e.PaymentCode,
+    amount: num(e.Amount),
+    category: e.CategoryName,
+    description: e.Description,
+  }));
+  const drivers = driverRows.map((d) => ({ id: d.DriverId as number, name: d.Name as string, is_active: d.IsActive as boolean }));
+  const types = typeRows.map((t) => ({ id: t.ExpenseCategoryId as number, name: t.Name as string }));
+  const customers = customerRows.map((c) => ({ id: c.CustomerId, name: c.Name, balance: num(c.Balance), is_active: c.IsActive }));
+  const locked = lock[0]?.L === true;
   const q = (d: string, p: Period) => `/giderler?gun=${d}${p === "gun" ? "" : `&donem=${p}`}`;
 
   return (

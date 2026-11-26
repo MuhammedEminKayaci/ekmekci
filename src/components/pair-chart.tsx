@@ -1,4 +1,4 @@
-import { cx, order } from "@/components/ui";
+import { cx } from "@/components/ui";
 import { money, moneyShort } from "@/lib/format";
 
 export type PairPoint = { key: string; label: string; sublabel?: string; sale: number; collect: number; current?: boolean };
@@ -27,7 +27,7 @@ export function PairChart({ points, height = 200 }: { points: PairPoint[]; heigh
 
   return (
     <figure className="flex flex-col gap-4">
-      <figcaption className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[0.82rem] font-medium text-ink-2">
+      <figcaption className="flex flex-wrap items-center gap-x-5 gap-y-1 text-label font-medium text-ink-2">
         <span className="inline-flex items-center gap-2">
           <span className="size-2.5 rounded-[3px] bg-series-sale" aria-hidden /> Satış
         </span>
@@ -42,7 +42,7 @@ export function PairChart({ points, height = 200 }: { points: PairPoint[]; heigh
           {ticks.map((t) => (
             <span
               key={t}
-              className="tnum absolute right-0 translate-y-1/2 text-[0.68rem] font-medium whitespace-nowrap text-ink-3"
+              className="tnum absolute right-0 translate-y-1/2 text-micro font-medium whitespace-nowrap text-ink-3"
               style={{ bottom: pct(t) }}
             >
               {t === 0 ? "0" : moneyShort(t)}
@@ -73,17 +73,17 @@ export function PairChart({ points, height = 200 }: { points: PairPoint[]; heigh
                   )}
                 >
                   <span
-                    className="animate-grow w-full max-w-[1.15rem] rounded-t-[5px] bg-series-sale"
-                    style={{ height: pct(p.sale), ...order(i) }}
+                    className="w-full max-w-[1.15rem] rounded-t-[5px] bg-series-sale"
+                    style={{ height: pct(p.sale) }}
                   />
                   <span
-                    className="animate-grow w-full max-w-[1.15rem] rounded-t-[5px] bg-series-collect"
-                    style={{ height: pct(p.collect), ...order(i) }}
+                    className="w-full max-w-[1.15rem] rounded-t-[5px] bg-series-collect"
+                    style={{ height: pct(p.collect) }}
                   />
                   <span
                     role="tooltip"
                     className={cx(
-                      "neu pointer-events-none absolute bottom-[calc(100%+0.5rem)] z-10 hidden rounded-xl px-3.5 py-2.5 text-[0.8rem] whitespace-nowrap",
+                      "neu pointer-events-none absolute bottom-[calc(100%+0.5rem)] z-10 hidden rounded-xl px-3.5 py-2.5 text-label whitespace-nowrap",
                       "group-hover:block group-focus-visible:block",
                       i < points.length / 2 ? "left-0" : "right-0",
                     )}
@@ -110,13 +110,13 @@ export function PairChart({ points, height = 200 }: { points: PairPoint[]; heigh
               <li key={p.key} className="min-w-0 text-center">
                 <span
                   className={cx(
-                    "block truncate text-[0.72rem] font-semibold",
+                    "block truncate text-caption font-semibold",
                     p.current ? "text-brand-deep dark:text-brand" : "text-ink-2",
                   )}
                 >
                   {p.label}
                 </span>
-                {p.sublabel && <span className="block truncate text-[0.66rem] text-ink-3">{p.sublabel}</span>}
+                {p.sublabel && <span className="block truncate text-micro text-ink-3">{p.sublabel}</span>}
               </li>
             ))}
           </ol>

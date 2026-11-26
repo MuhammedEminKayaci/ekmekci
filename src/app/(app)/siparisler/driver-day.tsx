@@ -52,12 +52,23 @@ export function DriverDay({
 
   const [handed, setHanded] = useState(handedOver == null ? "" : String(handedOver).replace(".", ","));
   const [savedHanded, setSavedHanded] = useState(handedOver);
+  const [editingHanded, setEditingHanded] = useState(false);
   const handedValue = handed.trim() === "" ? null : parseAmount(handed);
+  // Başka cihazdan gelen değer: kutuda değilken ve kaydedilmemiş değişiklik yokken kutuya yaz.
+  const [prevHanded, setPrevHanded] = useState(handedOver);
+  if (handedOver !== prevHanded) {
+    setPrevHanded(handedOver);
+    if (!editingHanded && handedValue === savedHanded) {
+      setSavedHanded(handedOver);
+      setHanded(handedOver == null ? "" : String(handedOver).replace(".", ","));
+    }
+  }
   const diff = handedValue == null ? null : handedValue - toHand;
 
   const [exporting, startExport] = useTransition();
 
   async function commitHanded() {
+    setEditingHanded(false);
     const v = handed.trim() === "" ? null : parseAmount(handed);
     if (v === savedHanded) return;
     const res = await saveDriverHandover(day, driver.id, v);
@@ -95,7 +106,7 @@ export function DriverDay({
   return (
     <section className="m-3 mt-4 rounded-2xl border border-edge p-4 sm:m-4 sm:p-5 xl:m-6">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="flex items-center gap-2.5 font-display text-[1.1rem] font-semibold">
+        <h3 className="flex items-center gap-2.5 font-display text-lead font-semibold">
           <IconChip icon={Truck} tone="sky" size="sm" /> {title}
         </h3>
         <Button onClick={exportReport} disabled={exporting} className="min-h-11">
@@ -106,7 +117,7 @@ export function DriverDay({
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         {/* Özet */}
-        <dl className="tnum grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl bg-bg-deep/60 p-4 text-[0.92rem]">
+        <dl className="tnum grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl bg-bg-deep/60 p-4 text-body">
           <Item label="Dağıtılan ekmek" value={`${qty(delivered)} adet`} />
           <Item label="İade alınan" value={`${qty(returned)} adet`} />
           <Item label="Satış tutarı" value={money(sales)} />
@@ -116,10 +127,10 @@ export function DriverDay({
             <span className="flex items-center gap-2 font-semibold">
               <Wallet size={17} className="text-brand-deep dark:text-brand" /> Teslim edilecek
             </span>
-            <span className="font-display text-[1.35rem] font-semibold text-brand-deep dark:text-brand">{money(toHand)}</span>
+            <span className="font-display text-title font-semibold text-brand-deep dark:text-brand">{money(toHand)}</span>
           </div>
           <label className="col-span-2 flex flex-col gap-1.5">
-            <span className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-ink-2">
+            <span className="flex items-center gap-1.5 text-label font-semibold text-ink-2">
               <HandCoins size={14} /> Teslim alınan para (isteğe bağlı)
             </span>
             <span className="flex items-center gap-3">
@@ -129,6 +140,7 @@ export function DriverDay({
                 inputMode="decimal"
                 placeholder={money(toHand)}
                 onChange={(e) => setHanded(e.target.value.replace(/[^\d.,]/g, ""))}
+                onFocus={() => setEditingHanded(true)}
                 onBlur={commitHanded}
                 className={cx(inputClass, "max-w-48 text-right font-semibold")}
                 aria-label="Teslim alınan para"
@@ -136,7 +148,7 @@ export function DriverDay({
               {diff != null && (
                 <span
                   className={cx(
-                    "rounded-full px-2.5 py-1 text-[0.8rem] font-bold",
+                    "rounded-full px-2.5 py-1 text-label font-bold",
                     Math.abs(diff) < 0.005 ? "bg-credit-soft text-credit" : diff < 0 ? "bg-debt-soft text-debt" : "bg-sky-soft text-sky",
                   )}
                 >
@@ -157,8 +169,8 @@ export function DriverDay({
 function Item({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: "debt" }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[0.76rem] font-semibold text-ink-3">{label}</dt>
-      <dd className={cx("truncate font-semibold", strong && "text-[1.05rem]", tone === "debt" && "text-debt")}>{value}</dd>
+      <dt className="text-caption font-semibold text-ink-3">{label}</dt>
+      <dd className={cx("truncate font-semibold", strong && "text-input", tone === "debt" && "text-debt")}>{value}</dd>
     </div>
   );
 }
@@ -202,24 +214,24 @@ export function ExpenseList({
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="flex items-center gap-2 text-[0.9rem] font-semibold">
+      <p className="flex items-center gap-2 text-small font-semibold">
         <Fuel size={16} className="text-amber" /> Giderler
         {expenses.length > 0 && (
-          <span className="ml-auto tnum text-[0.85rem] text-debt">
+          <span className="ml-auto tnum text-small text-debt">
             Toplam {money(expenses.reduce((a, x) => a + Number(x.amount), 0))}
           </span>
         )}
       </p>
 
       {expenses.length === 0 ? (
-        <p className="rounded-xl bg-bg-deep/60 px-3.5 py-3 text-[0.88rem] text-ink-2">Bugün gider yazılmadı.</p>
+        <p className="rounded-xl bg-bg-deep/60 px-3.5 py-3 text-small text-ink-2">Bugün gider yazılmadı.</p>
       ) : (
         <ul className="scroll-soft flex flex-col gap-2 lg:max-h-[18rem] lg:overflow-y-auto lg:pr-1">
           {expenses.map((x) => (
             <li key={x.id} className="flex items-center gap-3 rounded-xl bg-bg-deep/60 px-3.5 py-2.5">
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{x.description || x.category || "Gider"}</span>
-                {x.description && x.category && <span className="text-[0.76rem] text-ink-3">{x.category}</span>}
+                {x.description && x.category && <span className="text-caption text-ink-3">{x.category}</span>}
               </span>
               <span className="tnum font-semibold text-debt">{money(Number(x.amount))}</span>
               {!locked && (
@@ -254,7 +266,7 @@ export function ExpenseList({
                 aria-pressed={category === c}
                 onClick={() => setCategory(category === c ? null : c)}
                 className={cx(
-                  "rounded-full px-3 py-1.5 text-[0.82rem] font-semibold transition-all duration-200",
+                  "rounded-full px-3 py-1.5 text-label font-semibold transition-all duration-200",
                   category === c ? "brand-fill" : "bg-bg-deep text-ink-2 hover:text-ink",
                 )}
               >

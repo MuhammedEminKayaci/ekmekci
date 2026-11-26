@@ -70,7 +70,7 @@ export function CustomerForm({
       <div className={cx("flex flex-col gap-4", wide && "sm:grid sm:grid-cols-2 sm:items-start sm:gap-6")}>
         <div className="flex flex-col gap-4">
       <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1.5 text-[0.8rem] font-semibold text-ink-2">Müşteri türü</legend>
+        <legend className="mb-1.5 text-label font-semibold text-ink-2">Müşteri türü</legend>
         <div className="neu-inset grid grid-cols-2 rounded-full p-1.5">
           {[
             { v: 1, label: "Şahıs" },
@@ -82,7 +82,7 @@ export function CustomerForm({
               aria-pressed={type === o.v}
               onClick={() => setType(o.v)}
               className={cx(
-                "min-h-11 rounded-full text-[0.92rem] font-semibold transition-all duration-300",
+                "min-h-11 rounded-full text-body font-semibold transition-all duration-300",
                 type === o.v ? "brand-fill" : "text-ink-2 hover:text-ink",
               )}
             >
@@ -118,7 +118,7 @@ export function CustomerForm({
         </span>
         <span className="min-w-0">
           <span className="block font-semibold">Ürün alır</span>
-          <span className="block text-[0.78rem] text-ink-3">
+          <span className="block text-label text-ink-3">
             {buys
               ? "Ekmek vb. ürün alır; Siparişler'de listelenir."
               : "Ürün almaz (ör. oduncu): yalnızca cari hesap. Siparişler'de görünmez, giderlerde seçilir."}
@@ -151,8 +151,8 @@ export function CustomerForm({
       {!editing && (
         buys ? (
         <fieldset className="flex min-h-0 flex-col gap-2">
-          <legend className="mb-1.5 text-[0.85rem] font-semibold text-ink-2">Aldığı ürünler ve fiyatları</legend>
-          {catalog.length === 0 && <p className="text-[0.85rem] text-ink-3">Önce Ürünler sayfasından ürün ekleyin.</p>}
+          <legend className="mb-1.5 text-small font-semibold text-ink-2">Aldığı ürünler ve fiyatları</legend>
+          {catalog.length === 0 && <p className="text-small text-ink-3">Önce Ürünler sayfasından ürün ekleyin.</p>}
           <div className="scroll-soft -mx-1 flex max-h-[min(24rem,45dvh)] flex-col gap-2 overflow-y-auto px-1 py-0.5">
           {catalog.map((p) => {
             const on = p.id in picked;
@@ -191,24 +191,24 @@ export function CustomerForm({
             );
           })}
           </div>
-          <span className="text-[0.8rem] text-ink-3">Fiyatlar bu müşteriye özeldir; sonradan müşteri kartından değiştirilebilir.</span>
+          <span className="text-label text-ink-3">Fiyatlar bu müşteriye özeldir; sonradan müşteri kartından değiştirilebilir.</span>
         </fieldset>
         ) : (
           <div className="flex min-h-40 flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-edge-strong p-6 text-center">
             <p className="font-semibold">Ürün almaz</p>
-            <p className="max-w-[30ch] text-[0.84rem] text-ink-3">Yalnızca cari hesap (ör. oduncu). Siparişler&apos;de görünmez; Giderler&apos;de seçilir.</p>
+            <p className="max-w-[30ch] text-small text-ink-3">Yalnızca cari hesap (ör. oduncu). Siparişler&apos;de görünmez; Giderler&apos;de seçilir.</p>
           </div>
         )
       )}
       </div>
 
       {error && (
-        <p role="alert" className="rounded-control bg-debt-soft px-3.5 py-2.5 text-[0.88rem] font-medium text-debt">
+        <p role="alert" className="rounded-control bg-debt-soft px-3.5 py-2.5 text-small font-medium text-debt">
           {error}
         </p>
       )}
 
-      <button type="submit" disabled={pending} className={buttonClass("primary", "mt-1 min-h-14 w-full text-[1rem]")}>
+      <button type="submit" disabled={pending} className={buttonClass("primary", "mt-1 min-h-14 w-full text-input")}>
         {pending ? "Kaydediliyor…" : editing ? "Değişiklikleri kaydet" : "Müşteriyi oluştur"}
       </button>
     </form>

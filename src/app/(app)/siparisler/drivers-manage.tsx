@@ -26,7 +26,7 @@ export function DriversManage({ drivers }: { drivers: Driver[] }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-[0.9rem] text-ink-2">
+      <p className="text-small text-ink-2">
         Adı değiştirmek için üzerine yazın. Ayrılan şoförü pasife alın; geçmiş kayıtları silinmez.
       </p>
       <ul className="flex flex-col gap-2.5">
@@ -82,7 +82,7 @@ function DriverRow({ driver }: { driver: Driver }) {
         className={cx(inputClass, "min-h-11 font-semibold")}
       />
       {driver.is_owner ? (
-        <span className="shrink-0 rounded-full bg-brand-soft px-3 py-1.5 text-[0.78rem] font-semibold text-brand-deep dark:text-brand">
+        <span className="shrink-0 rounded-full bg-brand-soft px-3 py-1.5 text-label font-semibold text-brand-deep dark:text-brand">
           İşletme
         </span>
       ) : (
@@ -97,7 +97,7 @@ function DriverRow({ driver }: { driver: Driver }) {
             })
           }
           className={cx(
-            "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-[0.82rem] font-semibold transition-colors",
+            "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-label font-semibold transition-colors",
             driver.is_active ? "text-ink-2 hover:bg-debt-soft hover:text-debt" : "text-brand-deep hover:bg-brand-soft",
           )}
         >

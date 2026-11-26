@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CalendarDays } from "lucide-react";
-import { IconChip, PageHeader, Skeleton, cx, order } from "@/components/ui";
+import { IconChip, PageHeader, Skeleton, cx } from "@/components/ui";
 import { addDays, money, monthLabel, monthStart, qty, shortDate, todayTR, weekStart, weekdayShort } from "@/lib/format";
-import { getSessionProfile } from "@/lib/session";
-import { createClient } from "@/lib/supabase/server";
+import { day, isoDay, num, proc, query, type Row } from "@/lib/db";
+import { requireUser } from "@/lib/session";
 import { CategoriesButton, NewProductButton } from "./product-manage";
 import { ProductsTable, type Category, type ProductRow, type Sum } from "./products-table";
 
@@ -13,28 +13,34 @@ export const metadata: Metadata = { title: "Ürünler" };
 const empty = (): Sum => ({ qty: 0, amount: 0 });
 
 async function Products() {
-  const supabase = await createClient();
+  const profile = await requireUser();
   const today = todayTR();
   const week = weekStart(today);
   const month = monthStart(today);
   const from = week < month ? week : month;
 
-  const [{ data: categories }, { data: products }, { data: route }, { data: counter }, profile] = await Promise.all([
-    supabase.from("product_categories").select("id, name, is_bread, color, sort_order").order("sort_order").order("id"),
-    supabase
-      .from("products")
-      .select("id, name, unit, suggested_price, is_active, sort_order, category_id")
-      .order("sort_order")
-      .order("id"),
-    supabase.rpc("get_product_daily", { p_from: from, p_to: today }),
-    supabase
-      .from("counter_sales")
-      .select("entry_date, product_id, qty, amount")
-      .not("product_id", "is", null)
-      .gte("entry_date", from)
-      .lte("entry_date", today),
-    getSessionProfile(),
+  const [categoryRows, productRows, daily] = await Promise.all([
+    query<Row>(
+      `SELECT c.CategoryId, c.Name, c.IsBread, Color = k.Code, c.SortOrder
+         FROM dbo.ProductCategories c JOIN dbo.Colors k ON k.ColorId = c.ColorId ORDER BY c.SortOrder, c.CategoryId`,
+    ),
+    query<Row>(`SELECT ProductId, Name, Unit, SuggestedPrice, IsActive, SortOrder, CategoryId FROM dbo.Products ORDER BY SortOrder, ProductId`),
+    proc("dbo.sp_Report_ProductDaily", { From: day(from), To: day(today) }),
   ]);
+  const categories = categoryRows.map((c) => ({ id: c.CategoryId as number, name: c.Name as string, is_bread: c.IsBread as boolean, color: c.Color as string }));
+  const products = productRows.map((p) => ({
+    id: p.ProductId as number, name: p.Name as string, unit: p.Unit as string,
+    suggested_price: p.SuggestedPrice == null ? null : num(p.SuggestedPrice),
+    is_active: p.IsActive as boolean, sort_order: p.SortOrder as number, category_id: p.CategoryId as number,
+  }));
+  // Dağıtım (verilen − iade) ve tezgah satışları ürün + gün bazında tek sonuçta gelir.
+  const dailyRows = daily.sets[0] as Row[];
+  const route = dailyRows
+    .filter((r) => num(r.RouteQty) !== 0 || num(r.RouteAmount) !== 0 || num(r.Customers) > 0)
+    .map((r) => ({ entry_date: isoDay(r.EntryDate)!, product_id: r.ProductId as number, delivered_qty: num(r.RouteQty), returned_qty: 0, net_amount: num(r.RouteAmount), customers: num(r.Customers) }));
+  const counter = dailyRows
+    .filter((r) => num(r.CounterQty) !== 0)
+    .map((r) => ({ entry_date: isoDay(r.EntryDate)!, product_id: r.ProductId as number, qty: num(r.CounterQty), amount: num(r.CounterAmount) }));
 
   // Ürün başına: dağıtım (verilen − iade) + tezgah satışı.
   type Acc = { day: Sum; week: Sum; month: Sum; monthRoute: number; monthCounter: number; todayCustomers: number };
@@ -131,17 +137,17 @@ async function Products() {
       <ProductsTable rows={rows} categories={cats} isAdmin={isAdmin} monthName={monthLabel(month).split(" ")[0]} />
 
       {usedCats.length > 0 && (
-        <section style={order(6)} className="neu animate-rise mt-5 rounded-tile">
+        <section className="neu mt-5 rounded-tile">
           <div className="p-5 sm:p-6">
-            <h2 className="flex items-center gap-2.5 font-display text-[1.15rem] font-semibold tracking-tight">
+            <h2 className="flex items-center gap-2.5 font-display text-lead font-semibold tracking-tight">
               <IconChip icon={CalendarDays} tone="brand" size="sm" /> {monthLabel(month)} — günlük satış
             </h2>
-            <p className="text-[0.85rem] text-ink-3">Türe göre net adet (dağıtım + tezgah) · en yeni üstte</p>
+            <p className="text-small text-ink-3">Türe göre net adet (dağıtım + tezgah) · en yeni üstte</p>
           </div>
           <div className="scroll-soft max-h-[30rem] overflow-auto pb-2">
-            <table className="tnum w-full min-w-max text-[0.9rem]">
+            <table className="tnum w-full min-w-max text-small">
               <thead>
-                <tr className="sticky top-0 z-10 border-y border-line bg-surface text-[0.78rem] font-semibold text-ink-3">
+                <tr className="sticky top-0 z-10 border-y border-line bg-surface text-label font-semibold text-ink-3">
                   <th className="px-5 py-2.5 text-left font-semibold sm:px-6">Gün</th>
                   {usedCats.map((c) => (
                     <th key={c.id} className="px-4 py-2.5 text-right font-semibold">

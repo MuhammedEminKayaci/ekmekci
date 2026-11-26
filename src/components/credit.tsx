@@ -10,7 +10,7 @@ export function Credit({ withTabBar = false }: { withTabBar?: boolean }) {
     <aside
       aria-label="Uygulama bilgisi ve destek"
       className={cx(
-        "fixed right-3 z-30 flex items-center gap-2 rounded-full border border-edge bg-surface/85 py-1.5 pr-3 pl-1.5 text-[0.72rem] text-ink-2 shadow-[0_8px_24px_-12px_rgba(16,60,34,0.35)] backdrop-blur-md sm:right-5 sm:text-[0.76rem]",
+        "fixed right-3 z-30 flex items-center gap-2 rounded-full border border-edge bg-surface/85 py-1.5 pr-3 pl-1.5 text-caption text-ink-2 shadow-pop backdrop-blur-md sm:right-5 sm:text-caption",
         withTabBar ? "bottom-[calc(5.4rem+max(0.6rem,env(safe-area-inset-bottom)))] lg:bottom-5" : "bottom-4 sm:bottom-5",
       )}
     >

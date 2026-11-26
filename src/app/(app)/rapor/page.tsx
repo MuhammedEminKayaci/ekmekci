@@ -4,9 +4,10 @@ import { Suspense } from "react";
 import { ChartColumn, HandCoins, Scale, Users, Wallet } from "lucide-react";
 import { AnimatedNumber } from "@/components/animated-number";
 import { PairChart } from "@/components/pair-chart";
-import { Balance, BalanceBadge, Empty, IconChip, PageHeader, Skeleton, Stat, Tile, TileTitle, TypeChip, WeekNav, order } from "@/components/ui";
+import { Balance, BalanceBadge, Empty, IconChip, PageHeader, Skeleton, Stat, Tile, TileTitle, TypeChip, WeekNav } from "@/components/ui";
 import { addDays, isISODate, money, qty, shortDate, todayTR, weekDays, weekStart, weekdayShort } from "@/lib/format";
-import { createClient } from "@/lib/supabase/server";
+import { getCustomerPeriod, getTotals } from "@/lib/reports";
+import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Hafta raporu" };
 
@@ -14,18 +15,13 @@ type Search = Promise<{ hafta?: string }>;
 
 async function Report({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;
-  const supabase = await createClient();
+  await requireUser();
   const today = todayTR();
   const currentWeek = weekStart(today);
   const start = weekStart(isISODate(sp.hafta) ? sp.hafta : today);
   const end = addDays(start, 6);
 
-  const [{ data: summary }, { data: daily }] = await Promise.all([
-    supabase.rpc("get_customer_period_summary", { p_from: start, p_to: end }),
-    supabase.rpc("get_totals", { p_from: start, p_to: end, p_group: "day" }),
-  ]);
-
-  const rows = summary ?? [];
+  const [rows, daily] = await Promise.all([getCustomerPeriod(start, end), getTotals(start, end, "day")]);
   const active = rows.filter((r) => r.entry_days > 0);
   const t = rows.reduce(
     (a, r) => ({
@@ -40,7 +36,7 @@ async function Report({ searchParams }: { searchParams: Search }) {
     { delivered: 0, returned: 0, net: 0, collection: 0, delta: 0, receivable: 0, credit: 0 },
   );
 
-  const dayMap = new Map((daily ?? []).map((d) => [d.period_start, d]));
+  const dayMap = new Map(daily.map((d) => [d.period_start, d]));
   const points = weekDays(start).map((d) => ({
     key: d,
     label: weekdayShort(d),
@@ -67,12 +63,12 @@ async function Report({ searchParams }: { searchParams: Search }) {
       />
 
       <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
-        <section style={order(1)} className="brand-fill animate-rise col-span-2 rounded-tile p-5 sm:p-7">
-          <p className="text-[0.85rem] font-semibold text-white/80">Haftanın net satışı</p>
-          <p className="font-display tnum text-[2.5rem] leading-none font-semibold tracking-[-0.03em] sm:text-[3rem]">
+        <section className="brand-fill col-span-2 rounded-tile p-5 sm:p-7">
+          <p className="text-small font-semibold text-white/80">Haftanın net satışı</p>
+          <p className="font-display tnum text-headline leading-none font-semibold tracking-[-0.03em] sm:text-hero">
             <AnimatedNumber value={t.net} />
           </p>
-          <p className="mt-1 text-[0.85rem] text-white/75">{qty(t.delivered - t.returned)} ekmek net satıldı</p>
+          <p className="mt-1 text-small text-white/75">{qty(t.delivered - t.returned)} ekmek net satıldı</p>
           <div className="mt-6 grid grid-cols-3 gap-3 rounded-2xl bg-white/12 p-3.5 sm:p-4">
             {[
               { label: "Verilen", value: `${qty(t.delivered)} adet` },
@@ -80,13 +76,13 @@ async function Report({ searchParams }: { searchParams: Search }) {
               { label: "İade oranı", value: `%${returnRate.toLocaleString("tr-TR")}` },
             ].map((s) => (
               <div key={s.label} className="min-w-0">
-                <p className="text-[0.75rem] font-semibold text-white/75">{s.label}</p>
-                <p className="font-display tnum truncate text-[1.15rem] font-semibold sm:text-[1.3rem]">{s.value}</p>
+                <p className="text-caption font-semibold text-white/75">{s.label}</p>
+                <p className="font-display tnum truncate text-lead font-semibold sm:text-title">{s.value}</p>
               </div>
             ))}
           </div>
         </section>
-        <Tile i={2} className="col-span-2 sm:col-span-1">
+        <Tile className="col-span-2 sm:col-span-1">
           <Stat
             icon={HandCoins}
             tone="sky"
@@ -95,7 +91,7 @@ async function Report({ searchParams }: { searchParams: Search }) {
             hint={`${active.length} müşteriden`}
           />
         </Tile>
-        <Tile i={3} className="col-span-2 sm:col-span-1">
+        <Tile className="col-span-2 sm:col-span-1">
           <Stat
             icon={Scale}
             tone={t.delta > 0 ? "debt" : "brand"}
@@ -105,43 +101,43 @@ async function Report({ searchParams }: { searchParams: Search }) {
           />
         </Tile>
 
-        <Tile i={4} className="col-span-2">
+        <Tile className="col-span-2">
           <TileTitle icon={<IconChip icon={ChartColumn} tone="brand" size="sm" />}>Günlere göre</TileTitle>
           <PairChart points={points} />
         </Tile>
-        <Tile i={5} className="col-span-2 flex flex-col gap-4">
+        <Tile className="col-span-2 flex flex-col gap-4">
           <TileTitle icon={<IconChip icon={Wallet} tone="debt" size="sm" />}>Hafta sonunda açık hesaplar</TileTitle>
           <div className="grid flex-1 grid-cols-1 gap-3 xs:grid-cols-2">
             <div className="flex flex-col justify-center rounded-2xl bg-debt-soft p-5">
-              <p className="text-[0.82rem] font-semibold text-debt">Bize borçları</p>
-              <p className="font-display tnum mt-1 text-[1.7rem] font-semibold text-debt">
+              <p className="text-label font-semibold text-debt">Bize borçları</p>
+              <p className="font-display tnum mt-1 text-heading font-semibold text-debt">
                 <AnimatedNumber value={t.receivable} />
               </p>
-              <p className="text-[0.78rem] text-debt/80">Borçlu müşterilerin toplamı</p>
+              <p className="text-label text-debt/80">Borçlu müşterilerin toplamı</p>
             </div>
             <div className="flex flex-col justify-center rounded-2xl bg-credit-soft p-5">
-              <p className="text-[0.82rem] font-semibold text-credit">Fazla ödenen</p>
-              <p className="font-display tnum mt-1 text-[1.7rem] font-semibold text-credit">
+              <p className="text-label font-semibold text-credit">Fazla ödenen</p>
+              <p className="font-display tnum mt-1 text-heading font-semibold text-credit">
                 <AnimatedNumber value={Math.abs(t.credit)} />
               </p>
-              <p className="text-[0.78rem] text-credit/80">Müşterilerin alacağı</p>
+              <p className="text-label text-credit/80">Müşterilerin alacağı</p>
             </div>
           </div>
         </Tile>
       </div>
 
-      <section style={order(6)} className="neu animate-rise mt-5 rounded-tile">
+      <section className="neu mt-5 rounded-tile">
         <div className="p-5 sm:p-6">
-          <h2 className="flex items-center gap-2.5 font-display text-[1.15rem] font-semibold tracking-tight">
+          <h2 className="flex items-center gap-2.5 font-display text-lead font-semibold tracking-tight">
             <IconChip icon={Users} tone="sky" size="sm" /> Müşteri bazında
           </h2>
-          <p className="mt-1 text-[0.85rem] text-ink-3">Önceki haftalardan devreden + bu haftanın sonucu = hafta sonundaki hesap</p>
+          <p className="mt-1 text-small text-ink-3">Önceki haftalardan devreden + bu haftanın sonucu = hafta sonundaki hesap</p>
         </div>
         {rows.length === 0 ? (
           <Empty title="Bu hafta hareket yok">Siparişler sayfasında bu haftaya kayıt girildiğinde rapor oluşur.</Empty>
         ) : (
           <>
-            <div className="hidden border-y border-line px-6 py-2.5 text-[0.78rem] font-semibold text-ink-3 lg:grid lg:grid-cols-[minmax(11rem,1.6fr)_repeat(7,minmax(5rem,1fr))] lg:gap-4">
+            <div className="hidden border-y border-line px-6 py-2.5 text-label font-semibold text-ink-3 lg:grid lg:grid-cols-[minmax(11rem,1.6fr)_repeat(7,minmax(5rem,1fr))] lg:gap-4">
               <span>Müşteri</span>
               <span className="text-right">Devreden</span>
               <span className="text-right">Verilen</span>
@@ -169,7 +165,7 @@ async function Report({ searchParams }: { searchParams: Search }) {
                       <span className="mt-0.5 block"><BalanceBadge value={r.closing_balance} /></span>
                     </span>
                   </div>
-                  <dl className="tnum grid grid-cols-3 gap-x-3 gap-y-2 text-[0.88rem] lg:contents">
+                  <dl className="tnum grid grid-cols-3 gap-x-3 gap-y-2 text-small lg:contents">
                     <Cell label="Devreden" value={<Balance value={r.opening_balance} className="font-medium" />} />
                     <Cell label="Verilen" value={qty(r.delivered_qty)} />
                     <Cell label="İade" value={qty(r.returned_qty)} />
@@ -193,7 +189,7 @@ async function Report({ searchParams }: { searchParams: Search }) {
 function Cell({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="lg:text-right">
-      <dt className="text-[0.72rem] font-semibold text-ink-3 lg:sr-only">{label}</dt>
+      <dt className="text-caption font-semibold text-ink-3 lg:sr-only">{label}</dt>
       <dd>{value}</dd>
     </div>
   );

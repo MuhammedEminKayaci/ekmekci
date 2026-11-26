@@ -1,24 +1,29 @@
-import { createClient } from "@/lib/supabase/server";
+import { cache } from "react";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { connection } from "next/server";
+import { SESSION_COOKIE, verifyToken } from "@/lib/auth";
+import { proc } from "@/lib/db";
 
-export type SessionProfile = { id: string; name: string; isAdmin: boolean; isActive: boolean };
+export type SessionProfile = { id: number; name: string; isAdmin: boolean; isActive: boolean };
 
-/** Oturumdaki kullanıcının profili. Yalnızca arayüzü uyarlamak içindir; yetkiyi veri tabanı denetler. */
-export async function getSessionProfile(): Promise<SessionProfile | null> {
-  const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-  const userId = claims?.claims.sub;
+/** Oturumdaki kullanıcının profili (istek başına bir kez okunur). */
+export const getSessionProfile = cache(async (): Promise<SessionProfile | null> => {
+  // Oturumun süresi saate bakılarak denetlenir: istek anına bağla (ön-çizimde çalışmasın).
+  await connection();
+  const userId = verifyToken((await cookies()).get(SESSION_COOKIE)?.value);
   if (!userId) return null;
+  const { sets } = await proc("dbo.sp_User_Get", { UserId: userId });
+  const u = sets[0]?.[0] as { UserId: number; FullName: string; Email: string; IsAdmin: boolean; IsActive: boolean } | undefined;
+  if (!u) return null;
+  return { id: u.UserId, name: u.FullName || u.Email, isAdmin: u.IsAdmin === true, isActive: u.IsActive === true };
+});
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, role, is_active")
-    .eq("id", userId)
-    .maybeSingle();
-
-  return {
-    id: userId,
-    name: profile?.full_name || String(claims?.claims.email ?? ""),
-    isAdmin: profile?.role === "admin" && profile.is_active === true,
-    isActive: profile?.is_active === true,
-  };
+/** Veri okuyan her sayfa ve işlem: oturum yoksa ya da hesap pasifse giriş sayfasına. */
+export async function requireUser(): Promise<SessionProfile> {
+  const p = await getSessionProfile();
+  // /cikis çerezi siler (pasif ya da silinmiş hesabın geçerli çerezi döngüye girmesin).
+  if (!p) redirect("/cikis");
+  if (!p.isActive) redirect("/cikis?pasif=1");
+  return p;
 }
